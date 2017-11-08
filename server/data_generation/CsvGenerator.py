@@ -1,3 +1,5 @@
+import datetime
+
 class CsvGenerator:
     def __init__(self, filename):
         self.filename = filename
@@ -20,8 +22,12 @@ class CsvGenerator:
 
 if __name__ == "__main__":
     dg = CsvGenerator('../../data/out.csv')
+    now = datetime.datetime.now()
     generators = {
         "A": lambda i: 'abcdefghijklmnopqrstuvwxyz'[i % 26],
-        "B": lambda i: i
+        "B": lambda i: i,
+        "C": lambda i: i % 2 == 0,
+        "D": lambda i: now.replace(hour=i)
+
     }
     dg.generate(col_generators=generators)
