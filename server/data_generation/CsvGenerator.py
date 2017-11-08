@@ -19,7 +19,7 @@ class CsvGenerator:
 
 
 if __name__ == "__main__":
-    dg = CsvGenerator('out.csv')
+    dg = CsvGenerator('../../data/out.csv')
     generators = {
         "A": lambda i: 'abcdefghijklmnopqrstuvwxyz'[i % 26],
         "B": lambda i: i
