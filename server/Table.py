@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from itertools import repeat
 from dateutil.parser import parse
 from multiprocessing import Pool
 import time
@@ -27,7 +28,7 @@ class Table:
         self.get_column_types()
 
         # Start a worker pool
-        self.num_partitions = 10
+        self.num_partitions = 8
         self.num_cores = 4
         self.workers = Pool(self.num_cores)
 
@@ -42,29 +43,26 @@ class Table:
         """
         dfs = []
         count = 0
-        for df in pd.read_csv(self.filename, chunksize=1000):
+        for df in pd.read_csv(self.filename, chunksize=4096):
             mask = np.ones(len(df.index), dtype=bool)
             for condition in conditions:
                 # Look up the values' indices needed in the condition
                 values = df[[condition.get_first(), condition.get_second()]]
-                values = values.assign(Condition=pd.Series([condition] * len(values.index)).values)
                 values_split = np.array_split(values, self.num_partitions)
 
                 # Pass the necessary columns to the workers and maintain a mask from the map
-                condition_mask = pd.concat(self.workers.map(Table.predicate, values_split))
+                condition_mask = pd.concat(self.workers.map(Table.predicate, zip(repeat(condition),values_split)))
                 mask = np.logical_and(mask, condition_mask)
             dfs.append(df.loc[mask.values, :])
-            count += 1000
+            count += 4096
             print(count)
         return pd.concat(dfs)
 
     @staticmethod
     def predicate(chunk):
-        acc = []
-        condition = chunk.iloc[0, 2]
-        for i in range(len(chunk.index)):
-            acc.append(condition.apply(chunk.iloc[i, 0], chunk.iloc[i, 1]))
-        return pd.Series(acc)
+        condition = chunk[0]
+        df = chunk[1]
+        return pd.Series(condition.np_apply(df.iloc[:, 0], df.iloc[:, 1]))
 
     @staticmethod
     def is_date(string):

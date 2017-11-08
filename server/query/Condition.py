@@ -1,5 +1,6 @@
 import re
 import numpy
+import numexpr as ne
 
 
 class Condition:
@@ -16,6 +17,8 @@ class Condition:
     def apply(self):
         pass
 
+    def np_apply(self,vals1, vals2):
+        pass
 
 class ConditionLessThan(Condition):
     def __init__(self, first, second):
@@ -65,6 +68,9 @@ class ConditionEqual(Condition):
         if numpy.isnan(val1) or numpy.isnan(val2):
             return False
         return val1 == val2
+
+    def np_apply(self,vals1, vals2):
+        return ne.evaluate('vals1 == vals2')
 
 
 class ConditionNotEqual(Condition):
