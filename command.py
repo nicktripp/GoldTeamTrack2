@@ -6,7 +6,7 @@ class CommandLine(cmd.Cmd):
     def __init__(self):
         cmd.Cmd.__init__(self)
 
-    def nothing():
+    def nothing(self):
         pass
 
     def do_hello(self, extra):

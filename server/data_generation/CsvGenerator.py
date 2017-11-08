@@ -1,4 +1,5 @@
 import datetime
+import random
 
 class CsvGenerator:
     def __init__(self, filename):
@@ -23,11 +24,19 @@ class CsvGenerator:
 if __name__ == "__main__":
     dg = CsvGenerator('../../data/out.csv')
     now = datetime.datetime.now()
-    generators = {
-        "A": lambda i: 'abcdefghijklmnopqrstuvwxyz'[i % 26],
-        "B": lambda i: i,
-        "C": lambda i: i % 2 == 0,
-        "D": lambda i: now.replace(hour=i)
 
-    }
-    dg.generate(col_generators=generators)
+    # Generate 289 random attributes
+    alphabet = 'abcedfjhijklmnopqrstuvwxyz'
+    generators = {}
+    for i in range(18):
+        for j in range(18):
+            generators[alphabet[i]+alphabet[j]] = lambda i: random.randint(1,1001)
+
+    # generators = {
+    #     "A": lambda i: 'abcdefghijklmnopqrstuvwxyz'[i % 26],
+    #     "B": lambda i: i,
+    #     "C": lambda i: i % 2 == 0,
+    #     "D": lambda i: now.replace(hour=i)
+    # }
+
+    dg.generate(rows = 1000000, col_generators=generators)
