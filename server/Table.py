@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 from dateutil.parser import parse
 from multiprocessing import Pool
-from itertools import repeat
-from server.query.Condition import Condition
+import time
+from server.query.Condition import ConditionEqual
 
 
 class Table:
@@ -41,22 +41,30 @@ class Table:
         :return: dataframe of all of the rows that satisfy the conditions
         """
         dfs = []
-        for df in pd.read_csv(self.filename, chunksize=100):
+        count = 0
+        for df in pd.read_csv(self.filename, chunksize=1000):
             mask = np.ones(len(df.index), dtype=bool)
             for condition in conditions:
                 # Look up the values' indices needed in the condition
                 values = df[[condition.get_first(), condition.get_second()]]
-                values['Condition'] = [condition] * len(values.index)
+                values = values.assign(Condition=pd.Series([condition] * len(values.index)).values)
                 values_split = np.array_split(values, self.num_partitions)
 
                 # Pass the necessary columns to the workers and maintain a mask from the map
-                condition_mask = pd.concat(self.workers.map(self.predicate, values_split))
+                condition_mask = pd.concat(self.workers.map(Table.predicate, values_split))
                 mask = np.logical_and(mask, condition_mask)
-            dfs.append(df.loc[mask, :])
+            dfs.append(df.loc[mask.values, :])
+            count += 1000
+            print(count)
         return pd.concat(dfs)
 
-    def predicate(self, row, condition):
-        return row[3].apply(row[0], row[1])
+    @staticmethod
+    def predicate(chunk):
+        acc = []
+        condition = chunk.iloc[0, 2]
+        for i in range(len(chunk.index)):
+            acc.append(condition.apply(chunk.iloc[i, 0], chunk.iloc[i, 1]))
+        return pd.Series(acc)
 
     @staticmethod
     def is_date(string):
@@ -79,8 +87,10 @@ class Table:
             else:
                 self.cols[c] = i, "Text"
 
-if __name__ == "__main__":
-    t = Table('../data/out.csv')
-    c = Condition('aa', 'ab')
 
+if __name__ == "__main__":
+    t0 = time.time()
+    t = Table('../data/out.csv')
+    c = ConditionEqual('aa', 'ab')
     print(t.where([c]))
+    print(time.time() - t0)
