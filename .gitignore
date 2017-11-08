@@ -107,4 +107,4 @@ venv.bak/
 # mypy
 .mypy_cache/
 .DS_Store
-out.csv
+data/out.csv

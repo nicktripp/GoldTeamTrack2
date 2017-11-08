@@ -46,13 +46,17 @@ class Table:
             for condition in conditions:
                 # Look up the values' indices needed in the condition
                 values = df[[condition.get_first(), condition.get_second()]]
+                values['Condition'] = [condition] * len(values.index)
                 values_split = np.array_split(values, self.num_partitions)
 
                 # Pass the necessary columns to the workers and maintain a mask from the map
-                condition_mask = pd.concat(self.workers.map(lambda row: condition.apply(row[0], row[1]), values_split))
+                condition_mask = pd.concat(self.workers.map(self.predicate, values_split))
                 mask = np.logical_and(mask, condition_mask)
             dfs.append(df.loc[mask, :])
         return pd.concat(dfs)
+
+    def predicate(self, row, condition):
+        return row[3].apply(row[0], row[1])
 
     @staticmethod
     def is_date(string):
