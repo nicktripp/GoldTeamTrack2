@@ -1,42 +1,67 @@
-import datetime
 import random
+import multiprocessing as mp
+import os
+
 
 class CsvGenerator:
-    def __init__(self, filename):
-        self.filename = filename
+    @staticmethod
+    def worker(q, generators):
+        for i in range(1000):
+            data = [','.join(str(generators[column]()) for column in generators)]
+            lines = '\n'.join(data) + '\n'
+            q.put(lines)
+        return lines
 
-    def generate(self, rows=10, col_generators={"A": lambda i: 'abcdefghijklmnopqrstuvwxyz'[i % 26]}):
-        self.m = rows
-        self.n = len(col_generators)
+    @staticmethod
+    def listener(q):
+        if not os.path.exists('../../data/'):
+            os.makedirs('../../data/')
+        with open('../../data/out.csv', 'w+') as f:
+            while 1:
+                m = q.get()
+                if m == -1:
+                    break
+                f.write(m)
+                f.flush()
+            f.close()
 
-        with open(self.filename, 'w+') as f:
-            # Write the column names to the csv file
-            f.write(','.join([c for c in col_generators])+'\n')
+    @staticmethod
+    def generate(rows, generators):
+        # Make a manager that uses a pool of processes
+        manager = mp.Manager()
+        queue = manager.Queue()
+        pool = mp.Pool(8)
 
-            # Generate a row based on an index seed and write it to file
-            for i in range(self.m):
-                row = []
-                for col in col_generators:
-                    row.append(str(col_generators[col](i)))
-                f.write(','.join(row) + '\n')
+        # put listener to work first
+        watcher = pool.apply_async(CsvGenerator.listener, (queue,))
 
+        # start workers
+        jobs = []
+        for i in range(rows):
+            job = pool.apply_async(CsvGenerator.worker, (queue, generators))
+            jobs.append(job)
+
+
+        # collect results from the workers through the pool result queue
+        for job in jobs:
+            job.get()
+        queue.put(-1)
+        pool.close()
+
+    @staticmethod
+    def generate_random_int_cols():
+        alphabet = 'abcedfjhijklmnopqrstuvwxyz'
+        generators = {}
+        for i in range(18):
+            for j in range(18):
+                generators[alphabet[i] + alphabet[j]] = CsvGenerator.get_random_int
+        return generators
+
+    @staticmethod
+    def get_random_int():
+        return random.randint(1, 1001)
 
 if __name__ == "__main__":
-    dg = CsvGenerator('../../data/out.csv')
-    now = datetime.datetime.now()
-
     # Generate 289 random attributes
-    alphabet = 'abcedfjhijklmnopqrstuvwxyz'
-    generators = {}
-    for i in range(18):
-        for j in range(18):
-            generators[alphabet[i]+alphabet[j]] = lambda i: random.randint(1,1001)
-
-    # generators = {
-    #     "A": lambda i: 'abcdefghijklmnopqrstuvwxyz'[i % 26],
-    #     "B": lambda i: i,
-    #     "C": lambda i: i % 2 == 0,
-    #     "D": lambda i: now.replace(hour=i)
-    # }
-
-    dg.generate(rows = 1000000, col_generators=generators)
+    generators = CsvGenerator.generate_random_int_cols()
+    CsvGenerator.generate(1000, generators)
