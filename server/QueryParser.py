@@ -1,2 +1,0 @@
-class QueryParser:
-    pass
