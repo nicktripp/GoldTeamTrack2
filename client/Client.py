@@ -2,7 +2,7 @@ import http
 import cmd
 import requests
 
-class CommandLine(cmd.Cmd):
+class Client(cmd.Cmd):
     def __init__(self):
         cmd.Cmd.__init__(self)
 
@@ -37,5 +37,5 @@ history = []
 
 print("Hello, welcome to the SQL query program. Any input is terminated by a newline character. To view previous queries, simply use the up arrow key. Happy searching!")
 
-com = CommandLine()
+com = Client()
 com.cmdloop()
