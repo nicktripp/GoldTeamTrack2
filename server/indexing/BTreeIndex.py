@@ -35,7 +35,7 @@ class BTreeIndex:
 
         if index_name == 'movie_title':
             print(index_name)
-            index.where('Spider-Man 3')
+            print(self.where('Spider-Man 3'))
 
         # Save the Index
         with open(index_directory + index_name, 'wb') as f:
@@ -88,6 +88,5 @@ if __name__ == "__main__":
             index = BTreeIndex(pickle_dir, header, column_values, column_locations)
 
             if header == 'movie_title':
-                print(index.btree.root)
-
                 result = index.where('Spider-Man 3')
+                print(result)

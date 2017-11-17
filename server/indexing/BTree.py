@@ -93,11 +93,17 @@ class BTree:
             split as its children. Recall that no matter how large n (the number of slots for the keys at a node) is,
             it is always permissible for the root to have only one key and two children.
         """
-        result = self.insert_internal(key, value, self.root)
+        result = self.insert_recurse(key, value, self.root)
         if result is not None:
-            self.root = result[1]
+            key, right = result
+            if key is not None:
+                root = Block(self.blocksize, False)
+                root.insert_single(key, self.root, right)
+                self.root = root
+            else:
+                self.root = result[1]
 
-    def insert_internal(self, key, value, block):
+    def insert_recurse(self, key, value, block):
         """
         Inserts a key value pair into a block. If the block is an internal block, then recursively
         search for the appropriate leaf block for insertion. Perform the insertion and return the
@@ -113,52 +119,47 @@ class BTree:
 
         # Insert into a leaf
         if block.leaf:
-            result = block.insert(key, value)
+            result = block.insert_leaf(key, value)
             # If the leaf split create an internal node to return
             if result is not None:
-                new_block = Block(self.blocksize, False)
-                left = block
-                key, right = result
-                new_block.insert_single(key, left, right)
-                return key, new_block
+                return result
             else:
                 return None, block
 
         # Insert into internal blocks
-        inserted_key, inserted_block = None, None
+        median_key, inserted_block = None, None
         if key < block.keys[0]:
-            inserted_key, inserted_block = self.insert_internal(key, value, block.values[0])
-        for i in range(1, self.blocksize):
-            if block.keys[i - 1] <= key and (block.keys[i] is None or key < block.keys[i]):
-                inserted_key, inserted_block = self.insert_internal(key, value, block.values[i])
-                break
-        if inserted_block is None and key >= block.keys[-1]:
-            inserted_key, inserted_block = self.insert_internal(key, value, block.values[-1])
+            median_key, inserted_block = self.insert_recurse(key, value, block.values[0])
+        else:
+            for i in range(1, self.blocksize):
+                if block.keys[i - 1] <= key and (block.keys[i] is None or key < block.keys[i]):
+                    median_key, inserted_block = self.insert_recurse(key, value, block.values[i])
+                    break
+
+            if inserted_block is None and key >= block.keys[-1]:
+                median_key, inserted_block = self.insert_recurse(key, value, block.values[-1])
 
         # A new key indicates that the child block split
-        if inserted_key:
+        if median_key:
             # If this block isn't full add the new block to this one
             if any(k is None for k in block.keys):
                 for i in range(self.blocksize):
                     if block.keys[i] is None:
-                        block.keys[i] = inserted_key
+                        block.keys[i] = median_key
                         block.values[i+1] = inserted_block
                         break
-                    elif inserted_key < block.keys[i]:
+                    elif median_key < block.keys[i]:
                         # Shift the keys and values
                         block.keys[i+1:] = block.keys[i:-1]
                         block.values[i+1:] = block.values[i:-1]
 
                         # Insert the new key value pair
-                        block.keys[i] = inserted_key
+                        block.keys[i] = median_key
                         block.values[i+1] = inserted_block
+                        break
                 return None, block
             # We have to split this block and return a new internal block
             else:
-                new_block = Block(self.blocksize, False)
-                left = block
-                key, right = inserted_block
-                new_block.insert_single(key, left, right)
-                return key, new_block
+                return block.insert_internal(median_key, inserted_block)
 
-        return None, None
+        return None, block

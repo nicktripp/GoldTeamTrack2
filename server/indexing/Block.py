@@ -1,5 +1,6 @@
 import math
 
+
 class Block:
     """
     A Block is either an internal or leaf node in a B+ Tree. All Blocks will have the same number of keys as
@@ -24,7 +25,7 @@ class Block:
         Initializes a Block
         The Block is assumed to be a Leaf unless told otherwise
         """
-        assert(type(size) == int)
+        assert (type(size) == int)
         self.size = size
         self.leaf = is_leaf
         self.keys = [None] * self.size
@@ -60,8 +61,8 @@ class Block:
             return self.values[0]
 
         # In between one of the middle keys
-        for i in range(self.size-1):
-            if self.keys[i] <= key and (self.keys[i+1] is None or key < self.keys[i + 1]):
+        for i in range(self.size - 1):
+            if self.keys[i] <= key and (self.keys[i + 1] is None or key < self.keys[i + 1]):
                 return self.values[i + 1]
 
         # After the last key
@@ -91,7 +92,7 @@ class Block:
         self.values[0] = left_value
         self.values[1] = right_value
 
-    def insert(self, key, value):
+    def insert_internal(self, key, value):
         """
         Inserts a key value pair into the block while maintaining the order of the keys and values.
 
@@ -103,6 +104,39 @@ class Block:
         :param value:
         :return: None or (key, block)
         """
+        if any([k == key for k in self.keys]):
+            raise Exception("Attempted to insert duplicate key [%s]" % key)
+
+        # If there is space for another key
+        if any([k is None for k in self.keys]):
+            if key < self.keys[0]:
+                self.keys.insert(0, key)
+                self.values.insert(0, value)
+                return
+            for i in range(1, self.blocksize):
+                if self.keys[i - 1] <= key and (self.keys[i] is None or key < self.keys[i]):
+                    self.keys.insert(i, key)
+                    self.values.insert(i, value)
+                    return
+
+        # Otherwise split the block based on sorted key values pairs
+        keys = list(self.keys)
+        values = list(self.values)
+        if key < keys[0]:
+            values.insert(0, value)
+        else:
+            for i, k in enumerate(keys):
+                if key < k:
+                    keys.insert(i, key)
+                    values.insert(i, value)
+                    break
+            if key > keys[-1]:
+                keys.append(key)
+                values.append(value)
+
+        return self.internal_split(keys, values)
+
+    def insert_leaf(self, key, value):
         if any([k == key for k in self.keys]):
             raise Exception("Attempted to insert duplicate key [%s]" % key)
 
@@ -125,10 +159,7 @@ class Block:
                 keys.append(key)
                 values.insert(-1, value)
 
-        if self.leaf:
-            return self.leaf_split(keys, values)
-
-        return self.internal_split(keys, values)
+        return self.leaf_split(keys, values)
 
     def leaf_split(self, keys, values):
         """ See page 641 of the text """
@@ -146,7 +177,7 @@ class Block:
         self.keys[:pair_keep] = keys[:pair_keep]
         self.values = [None] * (self.size + 1)
         self.values[:pair_keep] = values[:pair_keep]
-        self.values[-1] = new_block # connect sibling leaves
+        self.values[-1] = new_block  # connect sibling leaves
 
         return new_keys[0], new_block
 
@@ -157,11 +188,13 @@ class Block:
 
         # Split the keys and values
         value_keep = math.ceil((self.size + 2) / 2)
+        value_move = math.floor((self.size + 2) / 2)
         key_keep = math.ceil(self.size / 2)
+        key_move = math.floor(self.size / 2)
 
         # keys staying is different than pointers staying
-        new_keys = keys[key_keep:]
-        new_values = values[value_keep:]
+        new_keys = keys[-key_move:]
+        new_values = values[-value_move:]
         new_block.set_after_split(new_keys, new_values, False)
 
         # clear moved pointers
@@ -171,7 +204,6 @@ class Block:
         self.values[:value_keep] = values[:value_keep]
 
         return new_keys[0], new_block
-
 
     def insert_into_block(self, key, value):
         for i in range(self.size):
@@ -198,7 +230,7 @@ class Block:
         :param keys: already sorted
         :param values: values for the keys of a leaf block
         """
-        assert(type(self.size) == int)
+        assert (type(self.size) == int)
         # Copy the keys
         self.keys = [None] * self.size
         self.keys[:len(keys)] = keys
@@ -206,8 +238,7 @@ class Block:
         # Copy the values
         self.values = [None] * (self.size + 1)
         if leaf_split:
-            self.values[:len(values)-1] = values[:-1]
+            self.values[:len(values) - 1] = values[:-1]
             self.values[-1] = values[-1]
         else:
             self.values[:len(values)] = values
-
