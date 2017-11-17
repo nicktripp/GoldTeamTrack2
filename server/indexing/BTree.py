@@ -93,52 +93,72 @@ class BTree:
             split as its children. Recall that no matter how large n (the number of slots for the keys at a node) is,
             it is always permissible for the root to have only one key and two children.
         """
-        root_keys = sum(k is not None for k in self.root.keys)
-        root_insert = self.insert_off_root(key, value, self.root)
+        result = self.insert_internal(key, value, self.root)
+        if result is not None:
+            self.root = result[1]
 
-        if root_insert is None:
-            return None
-
-        root_key, right = root_insert
-        # If root split reassign root
-        if sum(k is not None for k in self.root.keys) < root_keys:
-            left = self.root
-            self.root = Block(self.blocksize, False)
-            self.root.insert_single(root_key, left, right)
-        # Otherwise add the new root key and child
-        else:
-            for i in range(self.blocksize):
-                if self.root.keys[i] is None:
-                    self.root.keys[i] = root_key
-                    self.root.values[i+1] = right
-                    break
-                elif root_key < self.root.keys[i]:
-                    # Shift the keys and values
-                    self.root.keys[i+1:] = self.root.keys[i:-1]
-                    self.root.values[i+1:] = self.root.values[i:-1]
-
-                    # Insert the new key value pair
-                    self.root.keys[i] = root_key
-                    self.root.values[i+1] = right
-                    break
-
-    def insert_off_root(self, key, value, block):
+    def insert_internal(self, key, value, block):
+        """
+        Inserts a key value pair into a block. If the block is an internal block, then recursively
+        search for the appropriate leaf block for insertion. Perform the insertion and return the
+        block that is the result of the insertion. This may be a new block since a leaf may split
+        into an internal node pointing to leaves or an internal node pointing to other internal nodes
+        :param key:
+        :param value:
+        :param block:
+        :return:
+        """
         if any([k == key for k in block.keys]):
             raise Exception("Attempted to insert duplicate key [%s]" % key)
 
-        # Handle leaf case
+        # Insert into a leaf
         if block.leaf:
-            return block.insert(key, value)
+            result = block.insert(key, value)
+            # If the leaf split create an internal node to return
+            if result is not None:
+                new_block = Block(self.blocksize, False)
+                left = block
+                key, right = result
+                new_block.insert_single(key, left, right)
+                return key, new_block
+            else:
+                return None, block
 
-        # Check if key is less than all keys in current block
+        # Insert into internal blocks
+        inserted_key, inserted_block = None, None
         if key < block.keys[0]:
-            return block.values[0].insert(key, value)
-
-        # Check if key in between keys of block
+            inserted_key, inserted_block = self.insert_internal(key, value, block.values[0])
         for i in range(1, self.blocksize):
             if block.keys[i - 1] <= key and (block.keys[i] is None or key < block.keys[i]):
-                return block.values[i].insert(key, value)
+                inserted_key, inserted_block = self.insert_internal(key, value, block.values[i])
+                break
+        if inserted_block is None and key >= block.keys[-1]:
+            inserted_key, inserted_block = self.insert_internal(key, value, block.values[-1])
 
-        # Check if key is greater than all keys in current block
-        if key >= block.keys[-1]:
-            return block.values[-1].insert(key, value)
+        # A new key indicates that the child block split
+        if inserted_key:
+            # If this block isn't full add the new block to this one
+            if any(k is None for k in block.keys):
+                for i in range(self.blocksize):
+                    if block.keys[i] is None:
+                        block.keys[i] = inserted_key
+                        block.values[i+1] = inserted_block
+                        break
+                    elif inserted_key < block.keys[i]:
+                        # Shift the keys and values
+                        block.keys[i+1:] = block.keys[i:-1]
+                        block.values[i+1:] = block.values[i:-1]
+
+                        # Insert the new key value pair
+                        block.keys[i] = inserted_key
+                        block.values[i+1] = inserted_block
+                return None, block
+            # We have to split this block and return a new internal block
+            else:
+                new_block = Block(self.blocksize, False)
+                left = block
+                key, right = inserted_block
+                new_block.insert_single(key, left, right)
+                return key, new_block
+
+        return None, None
