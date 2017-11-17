@@ -45,8 +45,6 @@ class BTree:
         :param blocksize: used to set the number of keys per block
         :param initial_values: dict of initial values to be inserted into
         """
-        print("Creating B+ Tree")
-
         unique_init = len(initial_values.keys())
         if unique_init < blocksize:
             # We need the root to split during the initialization
@@ -95,7 +93,7 @@ class BTree:
             split as its children. Recall that no matter how large n (the number of slots for the keys at a node) is,
             it is always permissible for the root to have only one key and two children.
         """
-        root_keys = len(self.root.keys)
+        root_keys = sum(k is not None for k in self.root.keys)
         root_insert = self.insert_off_root(key, value, self.root)
 
         if root_insert is None:
@@ -103,7 +101,7 @@ class BTree:
 
         root_key, right = root_insert
         # If root split reassign root
-        if len(self.root.keys) < root_keys:
+        if sum(k is not None for k in self.root.keys) < root_keys:
             left = self.root
             self.root = Block(self.blocksize, False)
             self.root.insert_single(root_key, left, right)
@@ -112,7 +110,8 @@ class BTree:
             for i in range(self.blocksize):
                 if self.root.keys[i] is None:
                     self.root.keys[i] = root_key
-                    self.root.values[i] = right
+                    self.root.values[i+1] = right
+                    break
                 elif root_key < self.root.keys[i]:
                     # Shift the keys and values
                     self.root.keys[i+1:] = self.root.keys[i:-1]
@@ -120,7 +119,8 @@ class BTree:
 
                     # Insert the new key value pair
                     self.root.keys[i] = root_key
-                    self.root.values[i] = right
+                    self.root.values[i+1] = right
+                    break
 
     def insert_off_root(self, key, value, block):
         if any([k == key for k in block.keys]):

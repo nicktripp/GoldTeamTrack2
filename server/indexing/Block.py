@@ -60,14 +60,12 @@ class Block:
             return self.values[0]
 
         # In between one of the middle keys
-        for i in range(self.size):
+        for i in range(self.size-1):
             if self.keys[i] <= key and (self.keys[i+1] is None or key < self.keys[i + 1]):
-                if self.values[i+1] is None:
-                    print("This might be it")
                 return self.values[i + 1]
 
         # After the last key
-        return self.values[:-1]
+        return self.values[-1]
 
     def get_leaf_value(self, key):
         """
@@ -121,7 +119,7 @@ class Block:
             for i, k in enumerate(keys):
                 if key < k:
                     keys.insert(i, key)
-                    values.insert(i + 1, value)
+                    values.insert(i, value)
                     break
             if key > keys[-1]:
                 keys.append(key)
@@ -141,7 +139,7 @@ class Block:
         # ceil of n + 1 / 2 pairs move from self to new block
         new_keys = keys[pair_keep:]
         new_values = values[pair_keep:]
-        new_block.set_after_split(new_keys, new_values)
+        new_block.set_after_split(new_keys, new_values, True)
 
         # pair_keep pairs stay in self, the rest go to the new_block
         self.keys = [None] * self.size
@@ -164,7 +162,7 @@ class Block:
         # keys staying is different than pointers staying
         new_keys = keys[key_keep:]
         new_values = values[value_keep:]
-        new_block.set_after_split(new_keys, new_values)
+        new_block.set_after_split(new_keys, new_values, False)
 
         # clear moved pointers
         self.keys = [None] * self.size
@@ -194,7 +192,7 @@ class Block:
                 return None
         raise Exception("This should be unreachable. Our key sort integrity has been violated")
 
-    def set_after_split(self, keys, values):
+    def set_after_split(self, keys, values, leaf_split=False):
         """
         Setter for private use when inserting into the BTree and splitting when there are too many keys
         :param keys: already sorted
@@ -207,4 +205,9 @@ class Block:
 
         # Copy the values
         self.values = [None] * (self.size + 1)
-        self.values[:len(values)] = values
+        if leaf_split:
+            self.values[:len(values)-1] = values[:-1]
+            self.values[-1] = values[-1]
+        else:
+            self.values[:len(values)] = values
+

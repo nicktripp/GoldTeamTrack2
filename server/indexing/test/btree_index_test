@@ -1,14 +1,26 @@
 from server.indexing.BTreeIndex import BTreeIndex
+import os
 
 if __name__ == "__main__":
     print("Testing B+ Tree Index Implementation")
 
+    pickle_dir = '../../../data/tmp/'
+    if not os.path.exists(pickle_dir):
+        os.makedirs(pickle_dir)
+
     column_values = 'abcdefghijklmnopqrstuvwxyz'*2
     column_locations = [i for i in range(26)] + [i for i in reversed(range(26))]
-    index = BTreeIndex('./', 'alphabet_soup', column_values, column_locations)
+    index = BTreeIndex(pickle_dir, 'alphabet_soup', column_values, column_locations)
 
     for cv in column_values:
         print(index.where(cv))
     print(index.where('!'))
+
+    # Check that it worked
+    # Read Spider-Man 3,2007,Sam Raimi,USA,English,258000000,Action|Adventure|Romance
+
+    movie_title_index = BTreeIndex.get_index(pickle_dir, 'movie_title')
+    result = movie_title_index.lookup('Spider-Man 3')
+    print(result)
 
     print("DONE")

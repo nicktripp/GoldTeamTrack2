@@ -33,9 +33,23 @@ class BTreeIndex:
             else:
                 self.btree.insert(value, {location})
 
+        if index_name == 'movie_title':
+            print(index_name)
+            index.where('Spider-Man 3')
+
         # Save the Index
         with open(index_directory + index_name, 'wb') as f:
             pickle.dump(self.btree, f, pickle.HIGHEST_PROTOCOL)
+
+    @staticmethod
+    def get_index(index_directory, index_name):
+        pickle_file = index_directory + index_name
+        if os.path.isfile(pickle_file):
+            print("Loading index from %s" % pickle_file)
+            with open(pickle_file, 'rb') as f:
+                return pickle.load(f)
+        else:
+            print("Index was not found")
 
     def where(self, value):
         with open(self.index_directory + self.index_name, 'rb') as f:
@@ -45,7 +59,7 @@ class BTreeIndex:
 
 if __name__ == "__main__":
     # Make a directory to persist the indices
-    pickle_dir = '../data/tmp'
+    pickle_dir = '../../data/tmp/'
     if not os.path.exists(pickle_dir):
         os.makedirs(pickle_dir)
 
@@ -56,7 +70,6 @@ if __name__ == "__main__":
         headers = f.readline()
         for j, header in enumerate(headers.split(',')):
             print("Starting to index column #%d %s" % (j, header))
-            t0 = time.time()
 
             # Get the column value of a row and the position to readline in f
             position = f.tell()
@@ -72,5 +85,9 @@ if __name__ == "__main__":
             f.readline()
 
             # Initialize and save a pickle dump of the index
-            BTreeIndex(pickle_dir, header, column_values, column_locations)
-            print("Spent %.3f s" % (time.time() - t0,))
+            index = BTreeIndex(pickle_dir, header, column_values, column_locations)
+
+            if header == 'movie_title':
+                print(index.btree.root)
+
+                result = index.where('Spider-Man 3')
