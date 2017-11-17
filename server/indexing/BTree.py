@@ -42,7 +42,7 @@ class BTree:
         Creates a B+ Tree with Blocks of with blocksize keys and blocksize + 1 values per block.
         initial_values is required to have more than blocksize key-value pairs
 
-        :param blocksize: used to set Block.size
+        :param blocksize: used to set the number of keys per block
         :param initial_values: dict of initial values to be inserted into
         """
         print("Creating B+ Tree")
@@ -50,7 +50,8 @@ class BTree:
         assert (len(initial_values.keys()) > blocksize)
 
         # Create the first block
-        self.root = Block(True)
+        self.blocksize = blocksize
+        self.root = Block(blocksize, True)
 
         # Insert initial values so that root is an internal node
         for key in initial_values:
@@ -93,7 +94,7 @@ class BTree:
 
         root_key, right = root_insert
         left = self.root
-        self.root = Block(False)
+        self.root = Block(self.blocksize, False)
         self.root.insert_single(root_key, left, right)
 
     def insert_off_root(self, key, value, block):
@@ -109,7 +110,7 @@ class BTree:
             return block.values[0].insert(key, value)
 
         # Check if key in between keys of block
-        for i in range(1, Block.size):
+        for i in range(1, self.blocksize):
             if block.keys[i - 1] <= key and (block.keys[i] is None or key < block.keys[i]):
                 return block.values[i].insert(key, value)
 
