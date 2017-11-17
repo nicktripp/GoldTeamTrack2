@@ -45,7 +45,13 @@ class Parser:
             type(stmt.tokens[idx]) == sqlparse.sql.IdentifierList
 
     def consume_select(self, stmt, idx):
+        """
+        Parses the SELECT COLS part of the query, starting at index idx.
+        Stores the selected cols in self.cols as a list of strings.
+        Returns the new cursor position after the SELECT part.
 
+        # TODO Does not handle keywords like DISTINCT
+        """
         if (stmt.get_type() != u'SELECT'):
             pass # TODO THROW ERROR
 
@@ -64,10 +70,30 @@ class Parser:
         if (not self.validate_identifier(stmt, idx)):
             pass # TODO THROW ERROR
 
-        self.cols = stmt.tokens[idx]
+        self.cols = self.token_to_list(stmt.tokens[idx])
+
         return idx+1
 
+    def token_to_list(self, token):
+        """
+        Converts a Token or TokenList to a list of strings
+        """
+        if(type(token) == sqlparse.sql.Identifier or token.ttype == sqlparse.tokens.Wildcard):
+            return [token.value]
+        elif(type(token) == sqlparse.sql.IdentifierList):
+            # Convert list recursively
+            return self.tokenlist_to_list(token)
+        else:
+            # TODO THROW ERROR! Unknown token attempted to convert
+            return ["ERROR!"]
 
+    def tokenlist_to_list(self, tokenlist):
+        l = []
+        for sub_token in tokenlist.tokens:
+            if(type(sub_token) == sqlparse.sql.Identifier or sub_token.ttype == sqlparse.tokens.Wildcard):
+                l.append(sub_token.value)
+
+        return l
 
     def consume_from(self, stmt, idx):
         """
@@ -89,14 +115,12 @@ class Parser:
         if (not self.validate_identifier(stmt, idx)):
             pass # TODO THROW ERROR
 
-        self.tbls = stmt.tokens[idx]
+        self.tbls = self.token_to_list(stmt.tokens[idx])
+
         return idx+1
 
 
     def consume_where(self, stmt, idx):
-        """
-        TODO WHERE
-        """
 
         # Eliminate leading whitespace
         idx = self.consume_whitespace(stmt, idx)
@@ -110,21 +134,59 @@ class Parser:
 
         return idx+1
 
+    def consume_condition(self, stmt, idx):
+        """
+        """
+        # Eliminate whitespace before COMPARISON
+        idx = self.consume_whitespace(stmt, idx)
+
+        # check that COMPARISON is next token
+        if(type(stmt.tokens[idx]) == sqlparse.sql.Comparison):
+            self.conds.append(stmt.tokens[idx])
+            # Add comparison to list
+        else:
+            print("UNIMPLEMENTED!") # TODO handle LIKE case
+
+
+        return idx+1
+
+    def consume_logic(self, stmt, idx):
+        """
+        """
+        if(stmt.tokens[idx].match(sqlparse.tokens.Keyword,"AND")):
+            self.conds.append("AND")
+        elif(stmt.tokens[idx].match(sqlparse.tokens.Keyword,"OR")):
+            self.conds.append("OR")
+        else:
+            pass # TODO THROW ERROR
+
+        return idx + 1
+
+
     def parse_where(self, stmt, idx):
         """
         # TODO condition parsing
         # TODO Multiple conditions
         # TODO LIKE conditon
+        # TODO DOES NOT SUPPORT PARENTHESIS
         """
         # Sanity check that WHERE is next token
         if(stmt.tokens[idx].match(sqlparse.tokens.Keyword,"WHERE")):
             pass # TODO THROW ERROR
         idx = idx + 1
 
-        # Eliminate whitespace trailing after WHERE
-        idx = self.consume_whitespace(stmt, idx)
+        self.conds = []
 
-        self.cond = stmt.tokens[idx]
+        while(idx < len(stmt.tokens)):
+            idx = self.consume_condition(stmt, idx)
+            if(idx >= len(stmt.tokens)):
+                break
+            idx = self.consume_whitespace(stmt, idx)
+            if(idx >= len(stmt.tokens)):
+                break
+            idx = self.consume_logic(stmt, idx)
+
+        return idx+1
 
 
     def parse_select_from_where(self):
@@ -136,10 +198,14 @@ class Parser:
             idx = 0
             idx = self.consume_select(stmt, idx)
             idx = self.consume_from(stmt, idx)
-            idx = self.consume_where(stmt, idx)
+            try:
+                idx = self.consume_where(stmt, idx)
+            except IndexError:
+                print("No WHERE clause found")
+                self.conds = []
 
 
-            return QueryFacade.query(self.cols, self.tbls, self.cond)
+            return QueryFacade.query(self.cols, self.tbls, self.conds)
 
 
         #return sqlparse.format(query, reindent=True, keyword_case='upper')
