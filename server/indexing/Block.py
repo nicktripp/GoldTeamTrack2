@@ -12,6 +12,12 @@ class Block:
     # Determines the number of keys in all blocks
     size = 4
 
+    def __repr__(self):
+        if self.leaf:
+            return "{Leaf %s: %s}" % (self.keys, self.values)
+        else:
+            return "{Internal %s: %s}" % (self.keys, self.values)
+
     def __init__(self, is_leaf=True):
         """
         Initializes a Block
@@ -52,7 +58,7 @@ class Block:
 
         # In between one of the middle keys
         for i in range(Block.size):
-            if self.keys[i] <= key < self.keys[i + 1]:
+            if self.keys[i] <= key and (self.keys[i+1] is None or key < self.keys[i + 1]):
                 return self.values[i + 1]
 
         # After the last key
@@ -108,6 +114,9 @@ class Block:
                 if key < k:
                     keys.insert(i, key)
                     values.insert(i + 1, value)
+            if key > keys[-1]:
+                keys.append(key)
+                values.insert(-1, value)
 
         # Create a new Block
         new_block = Block(self.leaf)
@@ -119,17 +128,12 @@ class Block:
         self.keys[key_keep:] = None
 
         # Split the values
-        new_values = np.array([None] * (Block.size + 1))
         value_keep = int(math.ceil(len(values) / 2))
-        for i in range(value_keep, Block.size + 2):
-            new_values[i - value_keep] = self.values[i]
-            self.values[i] = None
+        new_values = values[value_keep:]
+        self.values[value_keep:] = None
 
         # Update the new Block
         new_block.set_after_split(new_keys, new_values)
-
-        # This Block is not a leaf
-        self.leaf = False
 
         return median_key, new_block
 
@@ -138,6 +142,7 @@ class Block:
             if self.keys[i] is None:
                 self.keys[i] = key
                 self.values[i] = value
+                return None
             elif key < self.keys[i]:
                 # Shift the keys and values
                 self.keys[i + 1:] = self.keys[i:-1]

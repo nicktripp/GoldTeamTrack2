@@ -34,6 +34,9 @@ class BTree:
         in a leaf, which points to the next leaf.
     """
 
+    def __repr__(self):
+        return str(self.root)
+
     def __init__(self, blocksize, initial_values):
         """
         Creates a B+ Tree with Blocks of with blocksize keys and blocksize + 1 values per block.
@@ -51,21 +54,23 @@ class BTree:
 
         # Insert initial values so that root is an internal node
         for key in initial_values:
-            self.insert(key, initial_values[key], self.root, root=True)
+            self.insert(key, initial_values[key])
 
-    def lookup(self, key, block):
+    def lookup(self, key, block=None):
         """
         Assume there are no duplicate keys at the leaves and every search-key value that appears in the datafile
         will also appear at a leaf.
         :return:
         """
+        if block is None:
+            return self.lookup(key, self.root)
 
         if block.leaf:
             return block.get_value(key)
 
         return self.lookup(key, block.get_value(key))
 
-    def insert(self, key, value, block, root=False):
+    def insert(self, key, value):
         """
         * We try to find a place for the new key in the appropriate leaf, and we put it there if there is room.
 
@@ -80,51 +85,31 @@ class BTree:
             nodes and create a new root at the next higher level; the new root has the two nodes resulting from the
             split as its children. Recall that no matter how large n (the number of slots for the keys at a node) is,
             it is always permissible for the root to have only one key and two children.
-        :param root: Insert came from root
-        :param block: internal or leaf block
-        :param key: key to insert
-        :param value: value associated with key
-        :return: None or (key, value) to insert
         """
+        root_insert = self.insert_off_root(key, value, self.root)
+
+        if root_insert is None:
+            return None
+
+        root_key, right = root_insert
+        left = self.root
+        self.root = Block(False)
+        self.root.insert_single(root_key, left, right)
+
+    def insert_off_root(self, key, value, block):
+        # Handle leaf case
         if block.leaf:
             return block.insert(key, value)
 
-        # As an internal node, insert the block into the appropriate child block
-        insert_result = None
-
         # Check if key is less than all keys in current block
         if key < block.keys[0]:
-            insert_result = block.insert(key, value, block.values[0])
+            return block.values[0].insert(key, value)
 
         # Check if key in between keys of block
         for i in range(1, Block.size):
-            if block.keys[i - 1] <= key < block.keys[i]:
-                insert_result = block.insert(key, value, block.values[i])
-                break
+            if block.keys[i - 1] <= key and (block.keys[i] is None or key < block.keys[i]):
+                return block.values[i].insert(key, value)
 
         # Check if key is greater than all keys in current block
         if key >= block.keys[-1]:
-            insert_result = block.insert(key, value, block.values[-1])
-
-        # Handle the output of the insertion, including child splits
-        if insert_result is None:
-            return None
-
-        # Root must handle splits, internal nodes can pass them up
-        new_key = insert_result[0]
-        new_block = insert_result[1]
-        if not root:
-            return block.insert(new_key, new_block)
-        else:
-            root_insert = block.insert(new_key, new_block)
-            # Successfully insert to root
-            if root_insert is None:
-                return None
-            # Split root
-            else:
-                # Root was split, create Block with single key and a left child and a right child
-                root_key, right = root_insert
-                left = self.root
-                self.root = Block()
-                self.root.insert_single(root_key, left, right)
-                return None
+            return block.values[-1].insert(key, value)
