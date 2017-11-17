@@ -1,6 +1,4 @@
-import numpy as np
 import math
-
 
 class Block:
     """
@@ -13,17 +11,24 @@ class Block:
         if self.leaf:
             return "{Leaf %s: %s}\n" % (self.keys, self.values)
         else:
-            return "{Internal %s: %s}\n" % (self.keys, self.values)
+            vals = []
+            for v in self.values:
+                if type(v) is Block:
+                    vals.append('Leaf' if v.leaf else 'Internal')
+                else:
+                    vals.append(str(v))
+            return "{Internal %s: %s}\n" % (self.keys, ','.join(vals))
 
     def __init__(self, size, is_leaf=True):
         """
         Initializes a Block
         The Block is assumed to be a Leaf unless told otherwise
         """
+        assert(type(size) == int)
         self.size = size
         self.leaf = is_leaf
-        self.keys = np.array([None] * self.size)
-        self.values = np.array([None] * (self.size + 1))
+        self.keys = [None] * self.size
+        self.values = [None] * (self.size + 1)
 
     def get_value(self, key):
         """
@@ -57,6 +62,8 @@ class Block:
         # In between one of the middle keys
         for i in range(self.size):
             if self.keys[i] <= key and (self.keys[i+1] is None or key < self.keys[i + 1]):
+                if self.values[i+1] is None:
+                    print("This might be it")
                 return self.values[i + 1]
 
         # After the last key
@@ -106,8 +113,8 @@ class Block:
             return self.insert_into_block(key, value)
 
         # Otherwise split the block based on sorted key values pairs
-        keys = list(self.keys.tolist())
-        values = list(self.values.tolist())
+        keys = list(self.keys)
+        values = list(self.values)
         if key < keys[0]:
             values.insert(0, value)
         else:
@@ -115,29 +122,58 @@ class Block:
                 if key < k:
                     keys.insert(i, key)
                     values.insert(i + 1, value)
+                    break
             if key > keys[-1]:
                 keys.append(key)
                 values.insert(-1, value)
 
-        # Create a new Block
-        new_block = Block(self.size, self.leaf)
+        if self.leaf:
+            return self.leaf_split(keys, values)
 
-        # Split the keys
-        key_keep = int(math.ceil(self.size / 2))
-        median_key = keys[key_keep]
-        new_keys = keys[key_keep:]
-        self.keys[key_keep:] = None
+        return self.internal_split(keys, values)
 
-        # Split the values
-        value_keep = int(math.ceil(len(values) / 2))
-        new_values = values[value_keep-1:]
-        self.values[value_keep:] = None
-        self.values[-1] = new_block
+    def leaf_split(self, keys, values):
+        """ See page 641 of the text """
+        # Create a new block immediately to the right
+        new_block = Block(self.size, True)
+        pair_keep = math.ceil(len(keys) / 2)
 
-        # Update the new Block
+        # ceil of n + 1 / 2 pairs move from self to new block
+        new_keys = keys[pair_keep:]
+        new_values = values[pair_keep:]
         new_block.set_after_split(new_keys, new_values)
 
-        return median_key, new_block
+        # pair_keep pairs stay in self, the rest go to the new_block
+        self.keys = [None] * self.size
+        self.keys[:pair_keep] = keys[:pair_keep]
+        self.values = [None] * (self.size + 1)
+        self.values[:pair_keep] = values[:pair_keep]
+        self.values[-1] = new_block # connect sibling leaves
+
+        return new_keys[0], new_block
+
+    def internal_split(self, keys, values):
+        """ See page 641 of the text """
+        # Create a new block immediately to the right
+        new_block = Block(self.size, False)
+
+        # Split the keys and values
+        value_keep = math.ceil((self.size + 2) / 2)
+        key_keep = math.ceil(self.size / 2)
+
+        # keys staying is different than pointers staying
+        new_keys = keys[key_keep:]
+        new_values = values[value_keep:]
+        new_block.set_after_split(new_keys, new_values)
+
+        # clear moved pointers
+        self.keys = [None] * self.size
+        self.keys[:key_keep] = keys[:key_keep]
+        self.values = [None] * (self.size + 1)
+        self.values[:value_keep] = values[:value_keep]
+
+        return new_keys[0], new_block
+
 
     def insert_into_block(self, key, value):
         for i in range(self.size):
@@ -164,8 +200,11 @@ class Block:
         :param keys: already sorted
         :param values: values for the keys of a leaf block
         """
+        assert(type(self.size) == int)
         # Copy the keys
+        self.keys = [None] * self.size
         self.keys[:len(keys)] = keys
 
         # Copy the values
+        self.values = [None] * (self.size + 1)
         self.values[:len(values)] = values
