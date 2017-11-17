@@ -1,0 +1,14 @@
+from server.indexing.BTreeIndex import BTreeIndex
+
+if __name__ == "__main__":
+    print("Testing B+ Tree Index Implementation")
+
+    column_values = 'abcdefghijklmnopqrstuvwxyz'*2
+    column_locations = [i for i in range(26)] + [i for i in reversed(range(26))]
+    index = BTreeIndex('./', 'alphabet_soup', column_values, column_locations)
+
+    for cv in column_values:
+        print(index.where(cv))
+    print(index.where('!'))
+
+    print("DONE")
