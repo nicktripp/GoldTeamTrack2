@@ -97,6 +97,9 @@ class BTree:
         self.root.insert_single(root_key, left, right)
 
     def insert_off_root(self, key, value, block):
+        if any([k == key for k in block.keys]):
+            raise Exception("Attempted to insert duplicate key [%s]" % key)
+
         # Handle leaf case
         if block.leaf:
             return block.insert(key, value)

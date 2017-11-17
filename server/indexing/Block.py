@@ -100,6 +100,9 @@ class Block:
         :param value:
         :return: None or (key, block)
         """
+        if any([k == key for k in self.keys]):
+            raise Exception("Attempted to insert duplicate key [%s]" % key)
+
         # If there is space for another key
         if any([k is None for k in self.keys]):
             return self.insert_into_block(key, value)
