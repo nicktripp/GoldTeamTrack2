@@ -1,128 +1,7 @@
 import numpy as np
 import math
 
-
-class Block:
-    """
-    BTree Block
-    """
-
-    # Determines the number of keys in all blocks
-    size = 4
-
-    def __init__(self, is_leaf=True):
-        """
-        Initializes a Block
-        The Block is assumed to be a Leaf unless told otherwise
-        """
-        self.leaf = is_leaf
-        self.keys = np.array([None] * Block.size)
-        self.values = np.array([None] * (Block.size + 1))
-
-    def get_value(self, key):
-        """
-        Lookups up a value for a key
-
-        A key, K, identifies a value, V, for a block with keys K_1, K_2, ..., K_n and values V_1, V_2, ..., V_(n+1).
-
-        If self is a leaf, then K must match K_i for i in 1 to n.
-        If a match succeeds for a leaf (True, V) is returned.
-        If a match fails for a leaf (False, V_(n+1)) is returned.
-
-        If self is not a leaf, then return V as follows:
-
-        V_1     where K < K_1
-        V_2     where K_1 <= K < K_2
-        ...
-        V_(n)   where K_(n-1) <= K < K_n
-        V_(n+1) where K_n <= K
-
-        :param key: search key
-        :return: value or (boolean, value)
-        """
-        # Getting values for leaves is different from internal nodes
-        if self.leaf:
-            for i, k in enumerate(self.keys):
-                if key == k:
-                    return True, self.values[i]
-            return False, self.values[-1]
-
-        # Before the first key
-        if key < self.keys[0]:
-            return self.values[0]
-
-        # In between one of the middle keys
-        for i in range(Block.size):
-            if self.keys[i] <= key < self.keys[i + 1]:
-                return self.values[i + 1]
-
-        # After the last key
-        return self.values[:-1]
-
-    def insert_single(self, key, left_value, right_value):
-        self.keys[0] = key
-        self.values[0] = left_value
-        self.values[1] = right_value
-
-    def insert(self, key, value):
-        """
-        Inserts a key value pair into the block while maintaining the order of the keys and values.
-
-        If there are now size + 1 keys, the block will be split such that the lower half of the keys and values
-        will be stored in this block and the upper half of the keys and values are in a new block. The median key is
-        returned as a tuple with the new block.
-
-        :param key:
-        :param value:
-        :return: None or (key, block)
-        """
-        # If there is space for another key
-        if any([k is None for k in self.keys]):
-            for i in range(Block.size):
-                if key < self.keys[i]:
-                    # Shift the keys and values
-                    self.keys[i + 1:] = self.keys[i:-1]
-                    self.values[i + 1:-1] = self.values[i:-2]
-
-                    # Insert the key value pair
-                    self.keys[i] = key
-                    self.values[i] = value
-
-                    # Return without work to do
-                    return None
-            raise Exception("This should be unreachable. Our key sort integrity has been violated")
-
-        # The keys and values must be split
-        keys_leaving = math.floor(Block.size / 2)
-        values_leaving = math.floor((Block.size + 2) / 2)
-        new_block = Block(self.leaf)
-        new_block.set_after_split(self.keys[:-keys_leaving], self.values[:-values_leaving])
-
-        # Clear space in this Block
-        self.keys[:-keys_leaving] = None
-        self.values[:-values_leaving] = None
-
-        # Add next block pointer
-        self.values[-1] = new_block
-
-        # self is not a leaf Block
-        self.leaf = False
-
-        # Return a tuple to be inserted above
-        return self.keys[math.ceil(Block.size / 2) + 1], new_block
-
-    def set_after_split(self, keys, values):
-        """
-        Setter for private use when inserting into the BTree and splitting when there are too many keys
-        :param keys: already sorted
-        :param values: values for the keys of a leaf block
-        """
-        # Copy the keys
-        self.keys[:len(keys)] = keys
-
-        # Copy the values, mindful of the final block pointer
-        self.values[:len(values) - 1] = values[:-1]
-        self.values[-1] = values[-1]
+from server.indexing.Block import Block
 
 
 class BTree:
@@ -155,29 +34,36 @@ class BTree:
         in a leaf, which points to the next leaf.
     """
 
-    def __init__(self, blocksize):
+    def __init__(self, blocksize, initial_values):
         """
-        Creates a B+ Tree with blocksize keys per block.
-        :param blocksize:
+        Creates a B+ Tree with Blocks of with blocksize keys and blocksize + 1 values per block.
+        initial_values is required to have more than blocksize key-value pairs
+
+        :param blocksize: used to set Block.size
+        :param initial_values: dict of initial values to be inserted into
         """
         print("Creating B+ Tree")
-        self.root = Block()
+
+        assert (len(initial_values.keys()) > blocksize)
+
+        # Create the first block
+        self.root = Block(True)
+
+        # Insert initial values so that root is an internal node
+        for key in initial_values:
+            self.insert(key, initial_values[key], self.root, root=True)
 
     def lookup(self, key, block):
         """
         Assume there are no duplicate keys at the leaves and every search-key value that appears in the datafile
         will also appear at a leaf.
-
         :return:
         """
 
-        # If we are at a leaf, look among the keys there.
-        if block.is_leaf():
+        if block.leaf:
             return block.get_value(key)
 
-        # We are at an interior node
-        next = block.next_block(key)
-        return self.lookup(key, next)
+        return self.lookup(key, block.get_value(key))
 
     def insert(self, key, value, block, root=False):
         """
@@ -194,11 +80,13 @@ class BTree:
             nodes and create a new root at the next higher level; the new root has the two nodes resulting from the
             split as its children. Recall that no matter how large n (the number of slots for the keys at a node) is,
             it is always permissible for the root to have only one key and two children.
+        :param root: Insert came from root
+        :param block: internal or leaf block
         :param key: key to insert
         :param value: value associated with key
         :return: None or (key, value) to insert
         """
-        if block.is_leaf():
+        if block.leaf:
             return block.insert(key, value)
 
         # As an internal node, insert the block into the appropriate child block
