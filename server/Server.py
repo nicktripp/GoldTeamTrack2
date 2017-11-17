@@ -5,7 +5,7 @@ from flask import render_template
 from flask import request
 from flask import make_response
 
-from server.query import Parser
+from server.query.Parser import Parser
 
 import sys
 
@@ -26,8 +26,8 @@ def query():
         print('[SQL]: \'' + sql_str + '\'', file=sys.stderr)
 
         # Send query to query parser
-        query_formatted = Parser.parse(sql_str)
-        return make_response(query_formatted, 200)
+        p = Parser(sql_str)
+        return p.parse_select_from_where()
 
     else:
         return render_template('querypage.html')
