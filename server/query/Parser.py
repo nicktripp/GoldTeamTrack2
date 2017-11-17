@@ -25,100 +25,121 @@ class Parser:
 
         # TODO more robust validation
 
-
-
-    @staticmethod
-    def validate_select(statement):
+    def consume_whitespace(self, stmt, idx):
         """
-        Validates the query to check if it is a SELECT statement.
-        This method checks only the first three tokens to see if they are a select operator, whitespace, and an identifier.
+        Returns the next idx that isn't whitespace without performing any actions.
         """
-        is_valid = statement.get_type == u'SELECT'
-        is_valid = is_valid and statement.tokens[1].match(sqlparse.tokens.Whitespace,' ',regex=True) # TODO: complex whitespace matching
-        is_valid = is_valid and \
-            (
-                statement.tokens[2].match(sqlparse.tokens.Wildcard, '*') or \
-                type(statement.tokens[2]) == sqlparse.sql.Identifier or \
-                type(statement.tokens[2]) == sqlparse.sql.IdentifierList
-            )
-
-        # TODO throw error here
-        return is_valid
+        i = idx
+        while (i < len(stmt.tokens) and stmt.tokens[i].match(sqlparse.tokens.Whitespace,' ',regex=True)):
+            i += 1
+        return i
 
 
-
-    def select_cols(self, stmt):
+    def validate_identifier(self, stmt, idx):
         """
-        pulls out the columns selected in SELECT cols
+        Tests the token at the given index to see if it is a valid Identifier or list of identifers
         """
-        self.validate_select(stmt)
+        return                                                          \
+            stmt.tokens[idx].match(sqlparse.tokens.Wildcard, '*') or    \
+            type(stmt.tokens[idx]) == sqlparse.sql.Identifier or        \
+            type(stmt.tokens[idx]) == sqlparse.sql.IdentifierList
 
-        return stmt.tokens[2]
+    def consume_select(self, stmt, idx):
+
+        if (stmt.get_type() != u'SELECT'):
+            pass # TODO THROW ERROR
+
+        # Eliminate leading whitespace
+        idx = self.consume_whitespace(stmt, idx)
+
+        # Sanity check that SELECT is next token
+        if(not stmt.tokens[idx].match(sqlparse.tokens.DML, "SELECT")):
+            pass # TODO THROW ERROR
+        idx += 1 # Advance cursor
+
+        # Eliminate whitespace trailing after SELECT
+        idx = self.consume_whitespace(stmt, idx)
+
+        # Next Token is our set of selected cols
+        if (not self.validate_identifier(stmt, idx)):
+            pass # TODO THROW ERROR
+
+        self.cols = stmt.tokens[idx]
+        return idx+1
 
 
 
-    def validate_from(self, statement):
+    def consume_from(self, stmt, idx):
         """
-        Validates the query to check if it is a FROM statement.
-        This method checks only FROM tokens to see if they are a FROM keyword, whitespace, and an identifier.
+        # TODO: DOES NOT HANDLE JOINS!!
         """
-        is_valid = \
-            statement.tokens[3].match(sqlparse.tokens.Whitespace,' ',regex=True) and \
-            statement.tokens[4].match(sqlparse.tokens.Keyword,'FROM') and \
-            statement.tokens[5].match(sqlparse.tokens.Whitespace,' ',regex=True) and \
-            (
-                statement.tokens[6].match(sqlparse.tokens.Wildcard, '*') or \
-                type(statement.tokens[6]) == sqlparse.sql.Identifier or \
-                type(statement.tokens[6]) == sqlparse.sql.IdentifierList
-            )
 
-        # TODO do error raising here
+        # Eliminate leading whitespace
+        idx = self.consume_whitespace(stmt, idx)
 
-        return is_valid
+        # Sanity check that FROM is next token
+        if(not stmt.tokens[idx].match(sqlparse.tokens.Keyword,'FROM')):
+            pass # TODO THROW ERROR
+        idx += 1 # Advance cursor
 
-    def from_tables(self, stmt):
+        # Eliminate whitespace trailing after FROM
+        idx = self.consume_whitespace(stmt, idx)
+
+        # Next Token is our set of selected tables
+        if (not self.validate_identifier(stmt, idx)):
+            pass # TODO THROW ERROR
+
+        self.tbls = stmt.tokens[idx]
+        return idx+1
+
+
+    def consume_where(self, stmt, idx):
         """
-        Pulls out the tables selected in select cols FROM TABLES
+        TODO WHERE
         """
-        self.validate_from(stmt)
-        return stmt.tokens[6]
 
+        # Eliminate leading whitespace
+        idx = self.consume_whitespace(stmt, idx)
 
-    def validate_where(self, statement):
+        # Sanity check that WHERE is next token
+        if(not type(stmt.tokens[idx]) == sqlparse.sql.Where):
+            pass # TODO THROW ERROR
+
+        self.where = stmt.tokens[idx]
+        self.parse_where(self.where, 0)
+
+        return idx+1
+
+    def parse_where(self, stmt, idx):
         """
-        Validates the query to check if it is a FROM statement.
-        This method checks only FROM tokens to see if they are a FROM keyword, whitespace, and an identifier.
+        # TODO condition parsing
+        # TODO Multiple conditions
+        # TODO LIKE conditon
         """
-        isvalid = \
-            statement.tokens[7].match(sqlparse.tokens.Whitespace,' ',regex=True) and \
-            type(statement.tokens[8]) == sqlparse.sql.Where
+        # Sanity check that WHERE is next token
+        if(stmt.tokens[idx].match(sqlparse.tokens.Keyword,"WHERE")):
+            pass # TODO THROW ERROR
+        idx = idx + 1
 
-        # TODO handle error raising here
+        # Eliminate whitespace trailing after WHERE
+        idx = self.consume_whitespace(stmt, idx)
 
-        return is_valid
-
-    def where_conds(self, stmt):
-        """
-        Pulls out the conditions selected in select cols from tables WHERE CONDS
-        """
-        self.validate_where(stmt)
-        return '' # TODO
+        self.cond = stmt.tokens[idx]
 
 
     def parse_select_from_where(self):
-
-        # statements = sqlparse.parse(query)
 
         for stmt in self.statements:
             if (not self.validate(stmt)):
                 raise RuntimeError('Query statement is invalid: ' + stmt)
 
-            cols = self.select_cols(stmt) #TODO typecheck
-            tbls = self.from_tables(stmt) #TODO typecheck
-            # cond = self.where_conds(stmt) # TODO Where conditions
+            idx = 0
+            idx = self.consume_select(stmt, idx)
+            idx = self.consume_from(stmt, idx)
+            idx = self.consume_where(stmt, idx)
 
 
-            return QueryFacade.query(cols, tbls, "")
+            return QueryFacade.query(self.cols, self.tbls, self.cond)
 
 
         #return sqlparse.format(query, reindent=True, keyword_case='upper')
