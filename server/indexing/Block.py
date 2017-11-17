@@ -11,9 +11,9 @@ class Block:
 
     def __repr__(self):
         if self.leaf:
-            return "{Leaf %s: %s}" % (self.keys, self.values)
+            return "{Leaf %s: %s}\n" % (self.keys, self.values)
         else:
-            return "{Internal %s: %s}" % (self.keys, self.values)
+            return "{Internal %s: %s}\n" % (self.keys, self.values)
 
     def __init__(self, size, is_leaf=True):
         """
@@ -125,13 +125,14 @@ class Block:
         # Split the keys
         key_keep = int(math.ceil(self.size / 2))
         median_key = keys[key_keep]
-        new_keys = keys[key_keep + 1:]
+        new_keys = keys[key_keep:]
         self.keys[key_keep:] = None
 
         # Split the values
         value_keep = int(math.ceil(len(values) / 2))
-        new_values = values[value_keep:]
+        new_values = values[value_keep-1:]
         self.values[value_keep:] = None
+        self.values[-1] = new_block
 
         # Update the new Block
         new_block.set_after_split(new_keys, new_values)
