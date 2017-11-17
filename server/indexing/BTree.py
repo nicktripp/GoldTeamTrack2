@@ -47,7 +47,15 @@ class BTree:
         """
         print("Creating B+ Tree")
 
-        assert (len(initial_values.keys()) > blocksize)
+        unique_init = len(initial_values.keys())
+        if unique_init < blocksize:
+            # We need the root to split during the initialization
+            unique_init -= 1
+            if unique_init > 3:
+                blocksize = unique_init - (unique_init % 2) # only use even block sizes
+                print("WARNING: Using block size of %d" % blocksize)
+            else:
+                raise Exception("There are not enough unique column values to index")
 
         # Create the first block
         self.blocksize = blocksize
@@ -57,19 +65,19 @@ class BTree:
         for key in initial_values:
             self.insert(key, initial_values[key])
 
-    def lookup(self, key, block=None):
+    def lookup(self, key):
         """
         Assume there are no duplicate keys at the leaves and every search-key value that appears in the datafile
         will also appear at a leaf.
         :return:
         """
-        if block is None:
-            return self.lookup(key, self.root)
+        return self.lookup_recurse(key, self.root)
 
+    def lookup_recurse(self, key, block):
         if block.leaf:
             return block.get_value(key)
 
-        return self.lookup(key, block.get_value(key))
+        return self.lookup_recurse(key, block.get_value(key))
 
     def insert(self, key, value):
         """
@@ -87,15 +95,32 @@ class BTree:
             split as its children. Recall that no matter how large n (the number of slots for the keys at a node) is,
             it is always permissible for the root to have only one key and two children.
         """
+        root_keys = len(self.root.keys)
         root_insert = self.insert_off_root(key, value, self.root)
 
         if root_insert is None:
             return None
 
         root_key, right = root_insert
-        left = self.root
-        self.root = Block(self.blocksize, False)
-        self.root.insert_single(root_key, left, right)
+        # If root split reassign root
+        if len(self.root.keys) < root_keys:
+            left = self.root
+            self.root = Block(self.blocksize, False)
+            self.root.insert_single(root_key, left, right)
+        # Otherwise add the new root key and child
+        else:
+            for i in range(self.blocksize):
+                if self.root.keys[i] is None:
+                    self.root.keys[i] = root_key
+                    self.root.values[i] = right
+                elif root_key < self.root.keys[i]:
+                    # Shift the keys and values
+                    self.root.keys[i+1:] = self.root.keys[i:-1]
+                    self.root.values[i+1:] = self.root.values[i:-1]
+
+                    # Insert the new key value pair
+                    self.root.keys[i] = root_key
+                    self.root.values[i] = right
 
     def insert_off_root(self, key, value, block):
         if any([k == key for k in block.keys]):
