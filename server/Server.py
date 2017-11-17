@@ -5,6 +5,8 @@ from flask import render_template
 from flask import request
 from flask import make_response
 
+from server.query import Parser
+
 import sys
 
 app = Flask(__name__)
@@ -20,7 +22,12 @@ def hello(name=None):
 @app.route('/query/', methods=['GET','POST'])
 def query():
     if(request.method == 'POST'):
-        print(request.form['query'], file=sys.stderr)
-    resp = make_response(render_template('querypage.html'),200)
-    resp.text = "I got it dawg!"
-    return request.form['query']
+        sql_str = request.form['query']
+        print('[SQL]: \'' + sql_str + '\'', file=sys.stderr)
+
+        # Send query to query parser
+        query_formatted = Parser.parse(sql_str)
+        return make_response(query_formatted, 200)
+
+    else:
+        return render_template('querypage.html')
