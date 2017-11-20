@@ -11,10 +11,11 @@ class FileIndexer:
     and point you back to them when you ask for them
     """
 
-    def __init__(self, relative_path, table_name):
+    def __init__(self, relative_path, table_name, generate=False):
         self.table_name = table_name
         self.input_file = "%s./data/%s.csv" % (relative_path, self.table_name)
         self.output_dir = "%s./data/index/%s/" % (relative_path, self.table_name)
+        self.file_indexer_filename = self.output_dir + 'file_indexer_dict'
         self.index_dict = {}
         self.columns = []
 
@@ -22,7 +23,10 @@ class FileIndexer:
         self.make_index_directory()
 
         # Generate an index for each directory
-        self.generate_column_indices()
+        if generate:
+            self.generate_column_indices()
+        else:
+            self.load_column_indices()
 
     def make_index_directory(self):
         if not os.path.exists(self.output_dir):
@@ -60,6 +64,13 @@ class FileIndexer:
                     index = BTreeIndex(self.output_dir, column.name, column_values, column_locations)
                     self.index_dict[column] = index
 
+        with open(self.file_indexer_filename, 'wb') as f:
+            pickle.dump(self.index_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def load_column_indices(self):
+        with open(self.file_indexer_filename, 'rb') as f:
+            self.index_dict = pickle.load(f)
+
     @staticmethod
     def get_indexer(relative_path, table_name, column_name):
         pickle_file = "%sdata/index/%s/%s" % (relative_path, table_name, column_name)
@@ -70,4 +81,6 @@ class FileIndexer:
                 return pickle.load(f)
         else:
             raise Exception("Index was not found")
+
+
 

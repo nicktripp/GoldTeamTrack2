@@ -31,38 +31,33 @@ class QueryFacade:
         """
 
         # Load the indices that we need to use
-        indices = {}
-        for column in select_columns:
-            index = FileIndexer.get_indexer(relative_path, *column.split('.'))
-            indices[column] = index
+        file_indexers = {}
+        for table in from_tables:
+            file_indexers[table] = FileIndexer(relative_path, table)
 
-        # Order the conditions that will be executed
-        column_column_args, column_constant_args = QueryFacade.get_condition_args(indices, where_conditions)
+        # Get the conditions that we are going to execute
+        column_column_args, column_constant_args = QueryFacade.get_condition_args(file_indexers, where_conditions)
 
         print(column_column_args)
         print(column_constant_args)
 
-        # Identify the csv files that we will query
-        for table in from_tables:
-            print(table)
+        result = self.do_query(file_indexers, column_column_args, column_constant_args)
 
-        # Identify the where conditions
-        for condition in where_conditions:
-            print(condition)
+        return "FAILURE"
 
-        return "SELECT " + str(select_columns) + " FROM " + str(from_tables) + " WHERE " + str(where_conditions) + \
-               "\nSELECT " + str(select_columns.__class__) + " FROM " + str(from_tables.__class__) + " WHERE " + str(
-            where_conditions.__class__)
-
-    def do_query(self, indices, col_col_conditions, col_const_conditions):
+    def do_query(self, file_indexer, col_col_conditions, col_const_conditions):
         # Only need on index to query against
         records = None
         for args in col_const_conditions:
             # these are the args that get_condition_args produced
-            index = indices[args[0]]
+            # TODO : idk how to do this after Nick's latest changes
+            table_column = args[0].split('.')
+            table_indexer = file_indexer[table_column[0]]
+            index = table_indexer[table_column[1]]
 
             # Defer comparison to index implementation
-            record_set = index.op(args[1], args[2]) # TODO: make index.op to perform comparison against args[1]
+            # args[1] is a constant, args[2] is the comparisons string ie '<'
+            record_set = index.op(args[1], args[2])
 
             # Keep records that pass other conditions
             if records is None:
@@ -72,10 +67,13 @@ class QueryFacade:
 
         for args in col_col_conditions:
             # Get index for each table column
+            # TODO: Still don't know how to do this
             index1 = indices[args[0]]
             index2 = indices[args[1]]
+
             # Perform the comparison for all mn combinations of m values in col1 and n values of col2
-            for key in index1: # TODO: add iterator over index keys
+            # TODO: Move multi_op from BTreeIndex to FileIndexer
+            for key in index1.items():
                 # Use the other index to
                 record_set = index2.op(key, args[2])
 
@@ -106,6 +104,7 @@ class QueryFacade:
 
     @staticmethod
     def get_condition_args(indices, where_conditions):
+        # TODO: change to work with FileIndexer
         column_column_args = []
         column_constant_args = []
         for condition in where_conditions:
