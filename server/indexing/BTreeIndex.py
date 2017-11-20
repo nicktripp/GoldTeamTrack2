@@ -1,4 +1,4 @@
-from server.indexing.BTree import BTree
+from server.data_structures.btree.btree import BTree
 import pickle
 import os
 import time
@@ -9,33 +9,23 @@ sys.setrecursionlimit(10000)
 
 class BTreeIndex:
 
-    def __init__(self, index_directory, index_name, column_values, column_locations, blocksize=10):
+    def __init__(self, index_directory, index_name, column_values, column_locations, block_size=10):
         # Determines were to write index to disk
         self.index_directory = index_directory
         self.index_name = index_name
 
-        # Initialize the BTree index
-        initial_values = {}
-        count = 0
+        # Initialize the BTree index with 3 unique key-value pairs
+        initial_values = self.get_initial_values(column_values, column_locations)
+        self.btree = BTree(block_size, initial_values)
+
+        # Insert the rest of the pairs
         for cv, cl in zip(column_values, column_locations):
-            count += 1
-            if cv not in initial_values:
-                initial_values[cv] = {cl}
-            if len(initial_values) > blocksize:
-                break
-        self.btree = BTree(blocksize, initial_values)
-
-        # Finish filling the BTree Index
-        for value, location in zip(column_values[count:], column_locations[count:]):
-            result = self.btree.lookup(value)
-            if result[0]:
-                result[1].add(location)
+            # print("Inserting %s" % ((cv, cl),))
+            lookup = self.btree[cv]
+            if lookup:
+                lookup.add(cl)
             else:
-                self.btree.insert(value, {location})
-
-        if index_name == 'movie_title':
-            print(index_name)
-            print(self.where('Spider-Man 3'))
+                self.btree[cv] = {cl}
 
         # Save the Index
         with open(index_directory + index_name, 'wb') as f:
@@ -51,11 +41,22 @@ class BTreeIndex:
         else:
             print("Index was not found")
 
-    def where(self, value):
+    def get_initial_values(self, keys, values):
+        assert(len(keys) == len(values))
+        initial_values = {}
+        i = 0
+        n = len(keys)
+        while len(initial_values) < 3 and i < n:
+            initial_values[keys[i]] = {values[i]}
+            i += 1
+        assert(len(initial_values) == 3)
+        return initial_values
+
+
+    def where(self, key):
         with open(self.index_directory + self.index_name, 'rb') as f:
             index = pickle.load(f)
-        return index.lookup(value)
-
+        return index[key]
 
 if __name__ == "__main__":
     # Make a directory to persist the indices
@@ -85,8 +86,5 @@ if __name__ == "__main__":
             f.readline()
 
             # Initialize and save a pickle dump of the index
-            index = BTreeIndex(pickle_dir, header, column_values, column_locations)
-
-            if header == 'movie_title':
-                result = index.where('Spider-Man 3')
-                print(result)
+            if len(set(column_values)) >= 10:
+                index = BTreeIndex(pickle_dir, header, column_values, column_locations)
