@@ -48,6 +48,25 @@ class BTreeIndex:
             index = pickle.load(f)
         return index[key]
 
+    # TODO: ALL of this needs to be supported
+
+    # TODO: Add a switch or something that points the op to the correct comparison
+    def op(self, key, comparison):
+        """
+        The key will be compared against all of the keys in the index with the provided comparison
+
+        <, >, <>, =, etc.
+        :param key:
+        :param comparison:
+        :return: set of row locations in file
+        """
+        return None
+
+    def lessThan(self, key):
+        pass
+
+
+
 if __name__ == "__main__":
     # Make a directory to persist the indices
     pickle_dir = '../../data/tmp/'

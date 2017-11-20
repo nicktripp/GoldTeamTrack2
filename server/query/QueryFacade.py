@@ -54,6 +54,55 @@ class QueryFacade:
                "\nSELECT " + str(select_columns.__class__) + " FROM " + str(from_tables.__class__) + " WHERE " + str(
             where_conditions.__class__)
 
+    def do_query(self, indices, col_col_conditions, col_const_conditions):
+        # Only need on index to query against
+        records = None
+        for args in col_const_conditions:
+            # these are the args that get_condition_args produced
+            index = indices[args[0]]
+
+            # Defer comparison to index implementation
+            record_set = index.op(args[1], args[2]) # TODO: make index.op to perform comparison against args[1]
+
+            # Keep records that pass other conditions
+            if records is None:
+                records = record_set
+            else:
+                records = records.intersection(record_set)
+
+        for args in col_col_conditions:
+            index1 = indices[args[0]]
+            index2 = indices[args[1]]
+            # Perform the comparison for all mn combinations of m values in col1 and n values of col2
+            for key in index1: # TODO: add iterator over index keys
+                # Use the other index to
+                record_set = index2.op(key, args[2])
+
+                # Keep records that pass other conditions
+                if records is None:
+                    records = record_set
+                else:
+                    records = records.intersection(record_set)
+
+        # TODO: Read the rows of the tables that passed the conditions
+        # rows = read_records(records, tables)
+
+        # TODO: Project the rows into the desired columns
+        #return project(rows, columns)
+
+    def do_join_query(self, indices, col_col_conditions, col_const_conditions):
+        """
+        :param indices:
+        :param col_col_conditions: column to column comparisons that may be across tables
+        :param col_const_conditions:
+        :return:
+        """
+
+        # TODO: Perform comparisons the same way, but get the row locations for both files
+
+        # TODO: Read row locations from both tables, project, and concatenate to single row
+
+
     @staticmethod
     def get_condition_args(indices, where_conditions):
         column_column_args = []
