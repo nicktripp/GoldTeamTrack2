@@ -50,6 +50,8 @@ Zulu
     print(movie_title_index.op(keys[0], comparisons[0]))
     print(movie_title_index.op(keys[1], comparisons[1]))
     print(movie_title_index.op(keys[2], comparisons[2]))
-    print(movie_title_index.multi_op(keys, comparisons, logic))
+    # print(movie_title_index.multi_op(keys, comparisons, logic))
+
+    print(movie_title_index.op('%Zooland%', 'LIKE'))
 
     print("SUCCESS")

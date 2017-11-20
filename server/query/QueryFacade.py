@@ -54,8 +54,9 @@ class QueryFacade:
                "\nSELECT " + str(select_columns.__class__) + " FROM " + str(from_tables.__class__) + " WHERE " + str(
             where_conditions.__class__)
 
-    def do_query(self, indices, col_col_conditions, col_const_conditions):
-        # Only need on index to query against
+        # TODO: Get the logic between each condition
+
+        # Do the single table queries
         records = None
         for args in col_const_conditions:
             # these are the args that get_condition_args produced
@@ -70,14 +71,26 @@ class QueryFacade:
             else:
                 records = records.intersection(record_set)
 
-        for args in col_col_conditions:
-            # Get index for each table column
-            index1 = indices[args[0]]
-            index2 = indices[args[1]]
+
+        # Do the join queries
+        for args in column_column_args:
+            # Get the first column index
+            table1, column1 = QueryFacade.get_table_and_column_for_select(args[0])
+            table1_indexer = file_indexers[table1]
+            index1 = table1_indexer[column1]
+
+            # Get the second column index
+            table2, column2 = QueryFacade.get_table_and_column_for_select(args[1])
+            table2_indexer = file_indexers[table2]
+            index2 = table2_indexer[column2]
+
             # Perform the comparison for all mn combinations of m values in col1 and n values of col2
             for key in index1: # TODO: add iterator over index keys
                 # Use the other index to
                 record_set = index2.op(key, args[2])
+
+                # We need the cartesian product of these as tuples
+                
 
                 # Keep records that pass other conditions
                 if records is None:

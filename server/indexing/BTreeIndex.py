@@ -3,6 +3,7 @@ import pickle
 import os
 import time
 import sys
+import re
 
 sys.setrecursionlimit(10000)
 
@@ -154,13 +155,13 @@ class BTreeIndex:
             block = block.next_leaf
 
     def like(self, key):
-        # TODO: We can use greater than if it does not start with a %
-        val, block = self.btree.get_with_block(key)
+        val, block = self.btree.get_with_block(self.btree.smallest)
         ret = {}
         while True:
             for i in range(len(block.keys)):
-                # TODO: regex or something
-                if True:
+                pattern = re.compile(key.replace("%", ".*"))
+                check = pattern.match(block.keys[i])
+                if check:
                     ret[block.keys[i]] = block.values[i]
             if block.next_leaf is None:
                 return ret
