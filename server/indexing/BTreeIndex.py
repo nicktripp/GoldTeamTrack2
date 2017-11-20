@@ -58,12 +58,105 @@ class BTreeIndex:
         :param comparison:
         :return: set of row locations in file
         """
+        if comparison == '=':
+            return self.equal(key)
+        elif comparison == '<':
+            return self.lessThan(key)
+        elif comparison == '<=':
+            return self.lessThanOrEqual(key)
+        elif comparison == '<>':
+            return self.notEqual(key)
+        elif comparison == '>':
+            return self.greaterThan(key)
+        elif comparison == '>=':
+            return self.greaterThanOrEqual(key)
+        elif comparison == 'LIKE':
+            return self.like(key)
         return None
 
+    def equal(self, key):
+        values = self.btree[key]
+        return {key: values}
+
+    def notEqual(self, key):
+        val, block = self.btree.get_with_block(key)
+        ret = {}
+        while True:
+            for i in range(len(block.keys)):
+                if key != block.keys[i]:
+                    ret[block.keys[i]] = block.values[i]
+            if block.next_leaf is None:
+                return ret
+            block = block.next_leaf
+
     def lessThan(self, key):
-        pass
+        val, stop_block = self.btree.get_with_block(key)
+        val, block = self.btree.get_with_block(self.btree.smallest)
+        ret = {}
+        # Everything is less than until we get to the block that holds the matching key
+        while stop_block != block:
+            for i in range(len(block.keys)):
+                ret[block.keys[i]] = block.values[i]
+            block = block.next_leaf
 
+        # This is the only block that does a comparison
+        for i in range(len(block.keys)):
+            if key >= stop_block.keys[i]:
+                break
+            ret[block.keys[i]] = block.values[i]
+        return ret
 
+    def lessThanOrEqual(self, key):
+        val, stop_block = self.btree.get_with_block(key)
+        val, block = self.btree.get_with_block(self.btree.smallest)
+        ret = {}
+        # Everything is less than until we get to the block that holds the matching key
+        while stop_block != block:
+            for i in range(len(block.keys)):
+                ret[block.keys[i]] = block.values[i]
+            block = block.next_leaf
+
+        # This is the only block that does a comparison
+        for i in range(len(block.keys)):
+            if key > stop_block.keys[i]:
+                break
+            ret[block.keys[i]] = block.values[i]
+        return ret
+
+    def greaterThan(self, key):
+        val, block = self.btree.get_with_block(key)
+        ret = {}
+        while True:
+            for i in range(len(block.keys)):
+                if block.keys[i] > key:
+                    ret[block.keys[i]] = block.values[i]
+            if block.next_leaf is None:
+                return ret
+            block = block.next_leaf
+
+    def greaterThanOrEqual(self, key):
+        val, block = self.btree.get_with_block(key)
+        ret = {}
+        while True:
+            for i in range(len(block.keys)):
+                if block.keys[i] >= key:
+                    ret[block.keys[i]] = block.values[i]
+            if block.next_leaf is None:
+                return ret
+            block = block.next_leaf
+
+    def like(self, key):
+        # TODO: We can use greater than if it does not start with a %
+        val, block = self.btree.get_with_block(key)
+        ret = {}
+        while True:
+            for i in range(len(block.keys)):
+                # TODO: regex or something
+                if True:
+                    ret[block.keys[i]] = block.values[i]
+            if block.next_leaf is None:
+                return ret
+            block = block.next_leaf
 
 if __name__ == "__main__":
     # Make a directory to persist the indices

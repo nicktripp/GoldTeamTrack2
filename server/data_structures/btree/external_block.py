@@ -33,6 +33,7 @@ class ExternalBlock(Block):
         for i, ki in enumerate(self.keys):
             if ki == key:
                 return self.values[i], self
+        return None, self
 
     def insert_recurse(self, key, value):
         """
