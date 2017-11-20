@@ -193,6 +193,7 @@ class Parser:
 
         for stmt in self.statements:
             if (not self.validate(stmt)):
+                print(stmt)
                 raise RuntimeError('Query statement is invalid: ' + stmt)
 
             idx = 0
