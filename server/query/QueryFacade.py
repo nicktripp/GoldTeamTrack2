@@ -37,7 +37,7 @@ class QueryFacade:
             file_indexers[table] = FileIndexer(relative_path, table)
 
         # Get the conditions that we are going to execute
-        column_column_args, column_constant_args = QueryFacade.get_condition_args(file_indexers, where_conditions)
+        column_column_args, column_constant_args = QueryFacade.get_condition_args(where_conditions)
 
         # TODO: Get the logic between each condition
 
@@ -47,12 +47,15 @@ class QueryFacade:
             # these are the args that get_condition_args produced
             table, column = QueryFacade.get_table_and_column_for_select(args[0])
             table_indexer = file_indexers[table]
-            index = table_indexer[column]
+            index = table_indexer.index_dict[column]
 
             # Defer comparison to index implementation
             # args[1] is a constant, args[2] is the comparisons string ie '<'
             # TODO: Consider use of NOT
-            record_set = index.op(QueryFacade.try_parse_constant(args[1]), args[2])
+            key_to_set = index.op(QueryFacade.try_parse_constant(args[1]), args[2])
+            record_set = set()
+            for key in key_to_set:
+                record_set = record_set.union(key_to_set[key])
 
             # Keep records that pass other conditions
             if records is None:
@@ -94,26 +97,36 @@ class QueryFacade:
 
 
         # TODO: if cartesian_records is not empty filter it with rows of records that passed the constant constraints
-        return file_indexer.read_and_project(records, select_columns)
+        table_columns = {}
+        for select in select_columns:
+            table, column = select.split('.')
+            if table in table_columns:
+                table_columns[table].append(column)
+            else:
+                table_columns[table] = [column]
+
+        rows = []
+        for table in table_columns:
+            rows.append(file_indexers[table].read_and_project(records, table_columns[table]))
+
+        print(rows)
+        return rows
 
     @staticmethod
-    def get_condition_args(indices, where_conditions):
+    def get_condition_args(where_conditions):
         # TODO: change to work with FileIndexer
         column_column_args = []
         column_constant_args = []
         for condition in where_conditions:
-            print(condition.tokens)
             tokens = [t for t in condition.tokens if t._get_repr_name() != 'Whitespace']
-            print(tokens)
             column = str(tokens[0])
             comparison = str(tokens[1])
             other = str(tokens[2])
-            assert(column in indices)
-            if other in indices:
-                column_column_args.append((column, other, comparison))
-            else:
-                constant = QueryFacade.try_parse_constant(other)
+            if other[0] == "\"" and other[-1] == "\"":
+                constant = QueryFacade.try_parse_constant(other[1:-1])
                 column_constant_args.append((column, constant, comparison))
+            else:
+                column_column_args.append((column, other, comparison))
         return column_column_args, column_constant_args
 
 

@@ -62,7 +62,7 @@ class FileIndexer:
                 if column.type not in [ColumnType.UNKNOWN, ColumnType.BOOLEAN]:
                     # Compute and store the index
                     index = BTreeIndex(self.output_dir, column.name, column_values, column_locations)
-                    self.index_dict[column] = index
+                    self.index_dict[column.name] = index
 
         with open(self.file_indexer_filename, 'wb') as f:
             pickle.dump(self.index_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -112,15 +112,17 @@ class FileIndexer:
             # Parse the column names of the csv
             self.columns = Column.get_from_headers(f.readline())
 
-            print("self.columns " + self.columns)
+            print("self.columns ", self.columns)
+            table_columns = [c.name for c in self.columns]
 
             col_dict = []
             for column in columns:
-                col_index = self.columns.index(column)
+                col_index = table_columns.index(column)
                 col_dict.append({column, col_index})
 
 
             # for each row seek readline extract desired columns
+            # TODO: we are overwritting curr_row
             for row in rows:
                 f.seek(row)
                 curr_row = f.readline()[:-1].split(',')
