@@ -82,7 +82,7 @@ class QueryFacade:
                     records = records.intersection(record_set)
 
         # TODO: Read the rows of the tables that passed the conditions
-        return file_indexer.read_and_project(records, )
+        return file_indexer.read_and_project(records, select_columns)
 
         # TODO: Project the rows into the desired columns
         #return project(rows, columns)

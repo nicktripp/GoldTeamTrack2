@@ -82,7 +82,6 @@ class FileIndexer:
         else:
             raise Exception("Index was not found")
 
-
     def multi_op(self, keys, comparisons, logic):
         result = None
         for k, c, l in zip(keys, comparisons, logic):
@@ -101,8 +100,7 @@ class FileIndexer:
                     result = result.union(rows)
         return result
 
-
-        def read_and_project(self, rows, columns):
+    def read_and_project(self, rows, columns):
         """
         Values of rows are byte location in csv file, ie rows[0] is 0th row to read so f.seek(rows[0]); row = f.readline()
         columns is a list of column names (strings)
@@ -110,13 +108,7 @@ class FileIndexer:
         :param columns:
         :return:
         """
-
-        # TODO: Read first line (headers) figure indices of desired columns
-
-
-        # TODO: open the csv file (self....)
         with open(self.input_file, 'r') as f:
-
             # Parse the column names of the csv
             self.columns = Column.get_from_headers(f.readline())
 
@@ -128,15 +120,15 @@ class FileIndexer:
                 col_dict.append({column, col_index})
 
 
-        # TODO: for each row seek readline extract desired columns
+            # for each row seek readline extract desired columns
             for row in rows:
                 f.seek(row)
-                curr_row = f.readline().[:-1].split(',')
-            
-        # TODO: Reconcatenate each row return as list of csv rows
-                final_rows = []
-                final_rows.append(columns)
-                row_to_add = []
-                for col,index in col_dict:
-                    row_to_add.append(curr_row[index])
-                final_rows.append(row_to_add)
+                curr_row = f.readline()[:-1].split(',')
+
+            # Reconcatenate each row return as list of csv rows
+            final_rows = [columns]
+            row_to_add = []
+            for col, index in col_dict:
+                row_to_add.append(curr_row[index])
+            final_rows.append(','.join(row_to_add))
+            return final_rows
