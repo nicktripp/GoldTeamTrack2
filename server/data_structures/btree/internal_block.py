@@ -55,17 +55,20 @@ class InternalBlock(Block):
         # Insert after the last key
         elif self.keys[-1] <= key:
             insert_result = self.values[-1].insert_recurse(key, value)
+            self.keys[-1] = self.values[-1].keys[0]
         else:
             for i in range(1, len(self.keys)):
                 if self.keys[i-1] <= key < self.keys[i]:
-                    insert_result = self.values[i].insert_recruse(key, value)
+                    insert_result = self.values[i].insert_recurse(key, value)
+                    self.keys[i-1] = self.values[i].keys[0]
+                    break
 
         # Check if insertion resulted in split
-        if insert_result is None:
-            return None
+        if not insert_result[0]:
+            return False,
 
         # A split occurred, insert the new key value pair into the current block
-        return self.insert(*insert_result)
+        return self.insert(insert_result[1], insert_result[2])
 
     def insert_with_split(self, key, value):
         """
@@ -75,17 +78,18 @@ class InternalBlock(Block):
         :return:
         """
         # Insert the key value pair into the current pairs
-        inserted = False
-        for i, ki in enumerate(self.keys):
-            if key < ki:
-                self.keys.insert(i, key)
-                self.values.insert(i, value)
-                inserted = True
-                break
-
-        if not inserted:
+        if key < self.keys[0]:
+            self.keys.insert(0, key)
+            self.values.insert(1, value)
+        elif self.keys[-1] <= key:
             self.keys.append(key)
             self.values.append(value)
+        else:
+            for i in range(1, len(self.keys)):
+                if self.keys[i-1] <= key < self.keys[i]:
+                    self.keys.insert(i, key)
+                    self.values.insert(i+1, value)
+                    break
 
         # Move the last floor(n/2) keys to the right
         move = math.ceil(self.size / 2)
@@ -114,25 +118,28 @@ class InternalBlock(Block):
         assert(len(self.values) + len(right.values) == self.size + 2)
         keys = self.keys + [median_key] + right.keys
         for i in range(1, len(keys)):
-            assert(keys[i-1] < keys[i])
+            assert keys[i-1] < keys[i], "%s\n%s\n%s" % (self, median_key, right)
 
         # Return the split key and the right block
-        return median_key, right
+        return True, median_key, right
 
     def insert_without_split(self, key, value):
         # Insert in between keys
-        for i in range(1, len(self.keys)):
-            if self.keys[i-1] <= key < self.keys[i]:
-                self.keys.insert(i, key)
-                self.values.insert(i + 1, value)
-                return None
-
-        # key is larger than all other keys in block
-        self.keys.append(key)
-        self.values.append(value)
+        if key < self.keys[0]:
+            self.keys.insert(0, key)
+            self.values.insert(1, value)
+        elif self.keys[-1] <= key:
+            self.keys.append(key)
+            self.values.append(value)
+        else:
+            for i in range(1, len(self.keys)):
+                if self.keys[i-1] <= key < self.keys[i]:
+                    self.keys.insert(i, key)
+                    self.values.insert(i + 1, value)
+                    break
 
         # Assert that we didn't need to split
         assert(len(self.keys) <= self.size)
         assert(len(self.values) <= self.size + 1)
         assert(len(self.keys) + 1 == len(self.values))
-        return None
+        return False,

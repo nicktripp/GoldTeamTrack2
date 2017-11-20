@@ -6,6 +6,7 @@ class BTree:
     """
     B+ Tree implementation
     """
+
     def __init__(self, block_size, initial_values):
         # Initialize BTree with a root and a left and right leaf
         self.block_size = block_size
@@ -14,6 +15,7 @@ class BTree:
         left = ExternalBlock(block_size, right)
 
         # Use 3 values to initialize the tree
+        assert (len(initial_values) >= 3)
         sorted_keys = sorted([k for k in initial_values][:3])
         left.keys = [sorted_keys[0]]
         left.values = [initial_values[sorted_keys[0]]]
@@ -21,7 +23,6 @@ class BTree:
         right.values = [initial_values[sorted_keys[1]], initial_values[sorted_keys[2]]]
         self.root.keys = [sorted_keys[1]]
         self.root.values = [left, right]
-
 
     def __repr__(self):
         return str(self.root)
@@ -38,8 +39,8 @@ class BTree:
         """
         insert_result = self.root.insert_recurse(key, value)
 
-        if insert_result is not None:
-            key, right = insert_result
+        if insert_result[0]:
+            key, right = insert_result[1], insert_result[2]
             root = InternalBlock(self.block_size)
             root.values = [self.root, right]
             root.keys = [key]

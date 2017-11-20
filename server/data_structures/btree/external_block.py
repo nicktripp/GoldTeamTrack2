@@ -1,5 +1,4 @@
 import math
-from itertools import repeat
 
 from server.data_structures.btree.block import Block
 
@@ -35,23 +34,21 @@ class ExternalBlock(Block):
         Stops the recursion through the InternalBlocks by inserting into self
         :param key:
         :param value:
-        :return:
+        :return: (Boolean did_split, (median_key, right_block))
         """
         return self.insert(key, value)
 
     def insert_with_split(self, key, value):
         # Insert the key-value pair, then split the leaf
-        inserted = False
-        for i, ki in enumerate(self.keys):
-            if key < ki:
-                self.keys.insert(i, key)
-                self.values.insert(i, value)
-                inserted = True
-                break
-
-        if not inserted:
+        if self.keys[-1] <= key:
             self.keys.append(key)
             self.values.append(value)
+        else:
+            for i, ki in enumerate(self.keys):
+                if key < ki:
+                    self.keys.insert(i, key)
+                    self.values.insert(i, value)
+                    break
 
         # Move pairs to a new block
         split = math.ceil(len(self.keys) / 2)
@@ -76,22 +73,23 @@ class ExternalBlock(Block):
             assert(keys[i-1] < keys[i])
 
         # Return median key and right block
-        return right.keys[0], right
+        return True, right.keys[0], right
 
     def insert_without_split(self, key, value):
         # Insert directly into the leaf
-        for i, ki in enumerate(self.keys):
-            if key < ki:
-                # Insert the key and value
-                self.keys.insert(i, key)
-                self.values.insert(i, value)
-                return None
-
-        # key is largest key in block
-        self.keys.append(key)
-        self.values.append(value)
+        if self.keys[-1] <= key:
+            self.keys.append(key)
+            self.values.append(value)
+        else:
+            for i, ki in enumerate(self.keys):
+                if key < ki:
+                    # Insert the key and value
+                    self.keys.insert(i, key)
+                    self.values.insert(i, value)
+                    break
 
         # Assert that we didn't need to split
         assert(len(self.keys) <= self.size)
         assert(len(self.values) <= self.size)
-        return None
+        assert(all([self.keys[i-1] < self.keys[i] for i in range(1, len(self.keys))]))
+        return False,

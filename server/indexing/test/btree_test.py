@@ -1,4 +1,4 @@
-from server.indexing.BTree import BTree
+from server.data_structures.btree.btree import BTree
 import pickle
 
 if __name__ == "__main__":

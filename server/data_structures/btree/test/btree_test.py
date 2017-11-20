@@ -87,10 +87,11 @@ if __name__ == "__main__":
     for k, v in zip(zzlphabet, range(2)):
         btree[k] = v
         assert (btree[k] == v)
+        print(btree)
     assert (str(btree) == \
-            """\
-{Internal ['r', 'zj'] :: [
-	Internal ['f', 'l'] :: [
+             """\
+{Internal ['z', 'zl'] :: [
+	Internal ['h', 'n'] :: [
 		Internal ['b', 'd'] :: [
 			{External ['a'] :: [0]}		
 			{External ['b', 'c'] :: [1, 2]}		
@@ -107,7 +108,7 @@ if __name__ == "__main__":
 			{External ['p', 'q'] :: [15, 16]}
 		]}
 	]}
-	Internal ['x', 'zd'] :: [
+	Internal ['z', 'zf'] :: [
 		Internal ['t', 'v'] :: [
 			{External ['r', 's'] :: [17, 18]}		
 			{External ['t', 'u'] :: [19, 20]}		
@@ -124,7 +125,7 @@ if __name__ == "__main__":
 			{External ['zh', 'zi'] :: [7, 8]}
 		]}
 	]}
-	Internal ['zp', 'zv'] :: [
+	Internal ['zr', 'zv'] :: [
 		Internal ['zl', 'zn'] :: [
 			{External ['zj', 'zk'] :: [9, 10]}		
 			{External ['zl', 'zm'] :: [11, 12]}		
