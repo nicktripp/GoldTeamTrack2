@@ -37,7 +37,9 @@ class QueryFacade:
         # Get the conditions that we are going to execute
         column_column_args, column_constant_args = QueryFacade.get_condition_args(file_indexers, where_conditions)
 
-        # Only need on index to query against
+        # TODO: Get the logic between each condition
+
+        # Do the single table queries
         records = None
         for args in column_constant_args:
             # these are the args that get_condition_args produced
@@ -55,6 +57,7 @@ class QueryFacade:
             else:
                 records = records.intersection(record_set)
 
+        # Do the join queries
         for args in column_column_args:
             # Get the first column index
             table1, column1 = QueryFacade.get_table_and_column_for_select(args[0])
@@ -74,6 +77,9 @@ class QueryFacade:
 
                 # Get matching records in second table
                 right_records = index2.op(key, args[2])
+
+                # We need the cartesian product of these as tuples
+                
 
                 # Keep records that pass other conditions
                 if records is None:
