@@ -109,7 +109,6 @@ class QueryFacade:
         for table in table_columns:
             rows.append(file_indexers[table].read_and_project(records, table_columns[table]))
 
-        print(rows)
         return rows
 
     @staticmethod

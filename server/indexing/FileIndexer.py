@@ -112,7 +112,6 @@ class FileIndexer:
             # Parse the column names of the csv
             self.columns = Column.get_from_headers(f.readline())
 
-            print("self.columns ", self.columns)
             table_columns = [c.name for c in self.columns]
 
             col_dict = []
@@ -122,15 +121,13 @@ class FileIndexer:
 
 
             # for each row seek readline extract desired columns
-            # TODO: we are overwritting curr_row
+            final_rows = [columns]
             for row in rows:
                 f.seek(row)
                 curr_row = f.readline()[:-1].split(',')
+                row = []
+                for index, col in col_dict:
+                    row.append(curr_row[index])
+                final_rows.append(','.join(row))
 
-            # Reconcatenate each row return as list of csv rows
-            final_rows = [columns]
-            row_to_add = []
-            for col, index in col_dict:
-                row_to_add.append(curr_row[index])
-            final_rows.append(','.join(row_to_add))
             return final_rows
