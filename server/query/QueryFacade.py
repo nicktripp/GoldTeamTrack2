@@ -25,7 +25,7 @@ class QueryFacade:
             FileIndexer(relative_path, table_name)
 
     @staticmethod
-    def query(select_columns, from_tables, where_conditions, relative_path = '../../../'):
+    def query(select_columns, from_tables, where_conditions, relative_path = ''):
         """
         @param select_columns - a list of strings corresponding to the proper column name
         @param from_tables - a list of table filenames
@@ -109,7 +109,7 @@ class QueryFacade:
         for table in table_columns:
             rows.append(file_indexers[table].read_and_project(records, table_columns[table]))
 
-        return rows
+        return str(rows)
 
     @staticmethod
     def get_condition_args(where_conditions):
