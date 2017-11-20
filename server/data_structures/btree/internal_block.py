@@ -8,6 +8,7 @@ class InternalBlock(Block):
     InternalBlock is a Node in the B+ Tree that has children
     (either InternalBlock children or ExternalBlock children not both)
     """
+
     def __init__(self, size):
         super().__init__(size)
 
@@ -35,8 +36,21 @@ class InternalBlock(Block):
         # Search in between keys
         else:
             for i in range(1, len(self.keys)):
-                if self.keys[i-1] <= key < self.keys[i]:
+                if self.keys[i - 1] <= key < self.keys[i]:
                     return self.values[i][key]
+
+    def get_with_block(self, key):
+        # Search before first key
+        if key < self.keys[0]:
+            return self.values[0].get_with_block(key)
+        # Search after last key
+        elif self.keys[-1] <= key:
+            return self.values[-1].get_with_block(key)
+        # Search in between keys
+        else:
+            for i in range(1, len(self.keys)):
+                if self.keys[i - 1] <= key < self.keys[i]:
+                    return self.values[i].get_with_block(key)
 
     def insert_recurse(self, key, value):
         """
@@ -58,9 +72,9 @@ class InternalBlock(Block):
             self.keys[-1] = self.values[-1].keys[0]
         else:
             for i in range(1, len(self.keys)):
-                if self.keys[i-1] <= key < self.keys[i]:
+                if self.keys[i - 1] <= key < self.keys[i]:
                     insert_result = self.values[i].insert_recurse(key, value)
-                    self.keys[i-1] = self.values[i].keys[0]
+                    self.keys[i - 1] = self.values[i].keys[0]
                     break
 
         # Check if insertion resulted in split
@@ -86,9 +100,9 @@ class InternalBlock(Block):
             self.values.append(value)
         else:
             for i in range(1, len(self.keys)):
-                if self.keys[i-1] <= key < self.keys[i]:
+                if self.keys[i - 1] <= key < self.keys[i]:
                     self.keys.insert(i, key)
-                    self.values.insert(i+1, value)
+                    self.values.insert(i + 1, value)
                     break
 
         # Move the last floor(n/2) keys to the right
@@ -112,13 +126,13 @@ class InternalBlock(Block):
         del self.values[keep:]
 
         # Assert that things were done correctly
-        assert(len(self.keys) + 1 == len(self.values))
-        assert(len(right.keys) + 1 == len(right.values))
-        assert(len(self.keys) + len(right.keys) == self.size)
-        assert(len(self.values) + len(right.values) == self.size + 2)
+        assert (len(self.keys) + 1 == len(self.values))
+        assert (len(right.keys) + 1 == len(right.values))
+        assert (len(self.keys) + len(right.keys) == self.size)
+        assert (len(self.values) + len(right.values) == self.size + 2)
         keys = self.keys + [median_key] + right.keys
         for i in range(1, len(keys)):
-            assert keys[i-1] < keys[i], "%s\n%s\n%s" % (self, median_key, right)
+            assert keys[i - 1] < keys[i], "%s\n%s\n%s" % (self, median_key, right)
 
         # Return the split key and the right block
         return True, median_key, right
@@ -133,13 +147,13 @@ class InternalBlock(Block):
             self.values.append(value)
         else:
             for i in range(1, len(self.keys)):
-                if self.keys[i-1] <= key < self.keys[i]:
+                if self.keys[i - 1] <= key < self.keys[i]:
                     self.keys.insert(i, key)
                     self.values.insert(i + 1, value)
                     break
 
         # Assert that we didn't need to split
-        assert(len(self.keys) <= self.size)
-        assert(len(self.values) <= self.size + 1)
-        assert(len(self.keys) + 1 == len(self.values))
+        assert (len(self.keys) <= self.size)
+        assert (len(self.values) <= self.size + 1)
+        assert (len(self.keys) + 1 == len(self.values))
         return False,
