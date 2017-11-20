@@ -113,8 +113,30 @@ class FileIndexer:
 
         # TODO: Read first line (headers) figure indices of desired columns
 
+
         # TODO: open the csv file (self....)
+        with open(self.input_file, 'r') as f:
+
+            # Parse the column names of the csv
+            self.columns = Column.get_from_headers(f.readline())
+
+            print("self.columns " + self.columns)
+
+            col_dict = []
+            for column in columns:
+                col_index = self.columns.index(column)
+                col_dict.append({column, col_index})
+
 
         # TODO: for each row seek readline extract desired columns
-
+            for row in rows:
+                f.seek(row)
+                curr_row = f.readline().[:-1].split(',')
+            
         # TODO: Reconcatenate each row return as list of csv rows
+                final_rows = []
+                final_rows.append(columns)
+                row_to_add = []
+                for col,index in col_dict:
+                    row_to_add.append(curr_row[index])
+                final_rows.append(row_to_add)
