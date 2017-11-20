@@ -41,7 +41,7 @@ class QueryFacade:
         print(column_column_args)
         print(column_constant_args)
 
-        result = self.do_query(file_indexers, column_column_args, column_constant_args)
+        result = QueryFacade.do_query(file_indexers, column_column_args, column_constant_args)
 
         return "FAILURE"
 

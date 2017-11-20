@@ -83,4 +83,38 @@ class FileIndexer:
             raise Exception("Index was not found")
 
 
+    def multi_op(self, keys, comparisons, logic):
+        result = None
+        for k, c, l in zip(keys, comparisons, logic):
+            partial_results = self.op(k, c)
+            rows = set()
+            for key in partial_results:
+                rows = rows.union(partial_results[key])
+            if result is None:
+                result = rows
+            else:
+                # Intersection
+                if l == 'AND':
+                    result = result.intersection(rows)
+                # Union
+                elif l == 'OR':
+                    result = result.union(rows)
+        return result
 
+
+    def read_and_project(self, rows, columns):
+        """
+        Values of rows are byte location in csv file, ie rows[0] is 0th row to read so f.seek(rows[0]); row = f.readline()
+        columns is a list of column names (strings)
+        :param rows:
+        :param columns:
+        :return:
+        """
+
+        # TODO: Read first line (headers) figure indices of desired columns
+
+        # TODO: open the csv file (self....)
+
+        # TODO: for each row seek readline extract desired columns
+
+        # TODO: Reconcatenate each row return as list of csv rows

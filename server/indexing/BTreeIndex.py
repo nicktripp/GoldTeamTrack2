@@ -48,26 +48,6 @@ class BTreeIndex:
             index = pickle.load(f)
         return index[key]
 
-    # TODO: Add a switch or something that points the op to the correct comparison
-    def multi_op(self, keys, comparisons, logic):
-        result = None
-        for k, c, l in zip(keys, comparisons, logic):
-            partial_results = self.op(k, c)
-            rows = set()
-            for key in partial_results:
-                rows = rows.union(partial_results[key])
-            if result is None:
-                result = rows
-            else:
-                # Intersection
-                if l == 'AND':
-                    result = result.intersection(rows)
-                # Union
-                elif l == 'OR':
-                    result = result.union(rows)
-        return result
-
-
     def op(self, key, comparison):
         """
         The key will be compared against all of the keys in the index with the provided comparison
