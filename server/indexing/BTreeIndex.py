@@ -50,6 +50,15 @@ class BTreeIndex:
 
     # TODO: ALL of this needs to be supported
 
+    def __iter__(self):
+        """
+        loop support
+        for * in *
+        start with the far left ExternalBlock and work up to the end
+        :return:
+        """
+        # TODO: Make this work (iterate over all keys)
+
     # TODO: Add a switch or something that points the op to the correct comparison
     def op(self, key, comparison):
         """

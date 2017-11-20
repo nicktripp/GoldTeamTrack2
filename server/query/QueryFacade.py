@@ -71,6 +71,7 @@ class QueryFacade:
                 records = records.intersection(record_set)
 
         for args in col_col_conditions:
+            # Get index for each table column
             index1 = indices[args[0]]
             index2 = indices[args[1]]
             # Perform the comparison for all mn combinations of m values in col1 and n values of col2
