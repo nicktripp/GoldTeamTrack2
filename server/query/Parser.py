@@ -14,7 +14,12 @@ class Parser:
         by processing it and then advancing the "cursor" as appropriate.
 
     TODO:
-        * More robust index-checking
+        * Handle adv. keywords, like 'DISTINCT'
+        * Handle renaming columns
+        * Handle joins
+        * Handle complex (Parentheses) boolean logic
+        * Further parse the conditions for ease of use.
+        * Handle more than one statement at once, or throw an error
     """
 
     def __init__(self, query_string):
@@ -71,8 +76,8 @@ class Parser:
         Advances the cursor to the index after this token phrase.
 
         TODO:
-        * Handle keywords such as 'DISTINCT'
-        * Handle renaming columns
+            * Handle keywords such as 'DISTINCT'
+            * Handle renaming columns
 
         @returns the index of the token after this token phrase
         """
@@ -115,7 +120,6 @@ class Parser:
             return self.tokenlist_to_list(token)
         else:
             raise SQLParsingError( token.value, "Invalid Identifier")
-
 
     def tokenlist_to_list(self, tokenlist):
         """
@@ -210,7 +214,6 @@ class Parser:
 
         TODO:
             * Handle complex (Parentheses) boolean logic
-            * More robust error checking
 
         @returns the index of the token after this token phrase
         """
@@ -323,7 +326,6 @@ class Parser:
 
         return idx + 1
 
-
     def parse_select_from_where(self):
         """
         Parses a standard SELECT-FROM-WHERE statement.
@@ -333,7 +335,7 @@ class Parser:
             statements separated by semicolons.
 
         TODO:
-            * Handle more than one statement at once.
+            * Handle more than one statement at once, or throw an error
 
         @returns the results of the query after passing it on to QueryFacade.
         """
@@ -354,6 +356,10 @@ class Parser:
             return QueryFacade.query(self.cols, self.tbls, self.conds)
 
     def check_index(self, stmt, idx):
+        """
+        Checks to see if the cursor is out of range based on its given index.
+        Raises an error if so.
+        """
         if(idx >= len(stmt.tokens)):
             raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Unexpected end of query")
 
