@@ -32,4 +32,24 @@ if __name__ == "__main__":
     print(movie_title_index.op('Zombieland', '='))
     print(movie_title_index.op('8 Mile', '<'))
 
+    """
+Zathura: A Space Adventure
+Zero Dark Thirty
+Zero Effect
+Zipper
+Zombie Hunter
+Zombieland
+Zoolander
+Zoolander 2
+Zoom
+Zulu
+"""
+    keys = ['Zero Dark Thirthy', 'Zulu',  'Zoomlander 2']
+    comparisons = ['>=', '<=', '<>']
+    logic = ['AND', 'AND', 'AND']
+    print(movie_title_index.op(keys[0], comparisons[0]))
+    print(movie_title_index.op(keys[1], comparisons[1]))
+    print(movie_title_index.op(keys[2], comparisons[2]))
+    print(movie_title_index.multi_op(keys, comparisons, logic))
+
     print("SUCCESS")
