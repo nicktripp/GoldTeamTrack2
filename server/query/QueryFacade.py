@@ -139,12 +139,8 @@ class QueryFacade:
             try:
                 return int(val)
             except ValueError:
-<<<<<<< HEAD
-                return val
-=======
                 return val
 
     @staticmethod
     def get_table_and_column_for_select(select_column):
         return select_column.split('.')[:2]
->>>>>>> 5188f134fc371c7104b9f0dde0fbdba54bc0ea41
