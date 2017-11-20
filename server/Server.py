@@ -6,6 +6,7 @@ from flask import request
 from flask import make_response
 
 from server.query.Parser import Parser
+from server.query.SQLParsingError import SQLParsingError
 
 import sys
 
@@ -27,7 +28,13 @@ def query():
 
         # Send query to query parser
         p = Parser(sql_str)
-        return p.parse_select_from_where()
+        try:
+            ret = p.parse_select_from_where()
+        except SQLParsingError as err:
+            ret = "[ERROR]: SQL Parsing Error: " + str(err)
+            print(ret, file=sys.stderr)
+
+        return ret
 
     else:
         return render_template('querypage.html')

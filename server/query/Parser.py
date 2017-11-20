@@ -81,6 +81,7 @@ class Parser:
 
         # Eliminate leading whitespace
         idx = self.consume_whitespace(stmt, idx)
+        self.check_index(stmt,idx)
 
         # Sanity check that SELECT is next token
         if(not stmt.tokens[idx].match(sqlparse.tokens.DML, "SELECT")):
@@ -89,6 +90,7 @@ class Parser:
 
         # Eliminate whitespace trailing after SELECT
         idx = self.consume_whitespace(stmt, idx)
+        self.check_index(stmt,idx)
 
         # Next Token is our set of selected cols
         if (not self.validate_identifier(stmt, idx)):
@@ -112,7 +114,7 @@ class Parser:
             # Convert list recursively
             return self.tokenlist_to_list(token)
         else:
-            raise SQLParsingError( token.value, "Not an Identifier Token")
+            raise SQLParsingError( token.value, "Invalid Identifier")
 
 
     def tokenlist_to_list(self, tokenlist):
@@ -143,25 +145,28 @@ class Parser:
 
         @returns the index of the token after this token phrase
         """
+        self.check_index(stmt,idx)
 
         # Eliminate leading whitespace
         idx = self.consume_whitespace(stmt, idx)
+        self.check_index(stmt,idx)
 
         self.print_curr_token(stmt, idx) # LOG
 
         # Sanity check that FROM is next token
         if(not stmt.tokens[idx].match(sqlparse.tokens.Keyword,'FROM')):
-            raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Unrecognized FROM format")
+            raise SQLParsingError(stmt.tokens[idx].value, "Expected 'FROM' keyword")
         idx += 1 # Advance cursor
 
         # Eliminate whitespace trailing after FROM
         idx = self.consume_whitespace(stmt, idx)
+        self.check_index(stmt,idx)
 
         self.print_curr_token(stmt, idx) # LOG
 
         # Next Token is our set of selected tables
         if (not self.validate_identifier(stmt, idx)):
-            raise SQLParsingError( stmt.tokens[idx].value, "Not an Identifier Token")
+            raise SQLParsingError( stmt.tokens[idx].value, "Invalid Identifier")
 
 
         self.tbls = self.token_to_list(stmt.tokens[idx])
@@ -181,12 +186,11 @@ class Parser:
 
         # Eliminate leading whitespace
         idx = self.consume_whitespace(stmt, idx)
-
-        self.print_curr_token(stmt, idx) # LOG
+        self.check_index(stmt,idx)
 
         # Sanity check that WHERE is next token
         if(not type(stmt.tokens[idx]) == sqlparse.sql.Where):
-            raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Unrecognized WHERE format")
+            raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Expected 'WHERE' keyword")
 
         self.where = stmt.tokens[idx]
         self.parse_where(self.where, 0)
@@ -211,23 +215,31 @@ class Parser:
         @returns the index of the token after this token phrase
         """
 
-        self.print_curr_token(stmt, idx)
+        self.print_curr_token(stmt, idx) # LOG
 
         # Sanity check that WHERE is next token
-        if(stmt.tokens[idx].match(sqlparse.tokens.Keyword,"WHERE")):
-            raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Unrecognized WHERE format")
+        if(not stmt.tokens[idx].match(sqlparse.tokens.Keyword,"WHERE")):
+            raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Expected 'WHERE' keyword")
         idx = idx + 1
 
         self.conds = []
 
+        expecting = True # Are we expecting more tokens as input?
+
         while(idx < len(stmt.tokens)):
             idx = self.consume_condition(stmt, idx)
             if(idx >= len(stmt.tokens)):
+                expecting = False
                 break
             idx = self.consume_whitespace(stmt, idx)
             if(idx >= len(stmt.tokens)):
+                expecting = False
                 break
             idx = self.consume_logic(stmt, idx)
+            expecting = True
+
+        if(expecting):
+            raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Unexpected end of query")
 
         return idx+1
 
@@ -250,6 +262,9 @@ class Parser:
         # Eliminate whitespace before COMPARISON
         idx = self.consume_whitespace(stmt, idx)
 
+        self.print_curr_token(stmt, idx) # LOG
+
+
         # check that COMPARISON is next token
         if(type(stmt.tokens[idx]) == sqlparse.sql.Comparison):
             self.conds.append(stmt.tokens[idx])
@@ -260,23 +275,33 @@ class Parser:
             self.conds.append([stmt.tokens[idx].value])
 
             idx += 1
+            self.check_index(stmt,idx)
+
+
 
             # Eliminate whitespace before LIKE
             idx = self.consume_whitespace(stmt, idx)
+            self.check_index(stmt,idx)
+
+            self.print_curr_token(stmt, idx) # LOG
 
             if(not stmt.tokens[idx].match(sqlparse.tokens.Keyword,'LIKE')):
-                raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Unrecognized WHERE format")
-            idx += 1
+                raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Expected 'LIKE' keyword")
             self.conds[-1].append("LIKE")
+            idx += 1
+
+            self.check_index(stmt,idx)
 
             idx = self.consume_whitespace(stmt, idx)
 
-            if (self.validate_identifier(stmt, idx)):
-                raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Unrecognized WHERE format")
+            self.check_index(stmt,idx)
+
+            if (not self.validate_identifier(stmt, idx)):
+                raise SQLParsingError( stmt.tokens[idx].value, "Invalid Identifier")
 
             self.conds[-1].append(stmt.tokens[idx].value)
         else:
-            raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Invalid WHERE Condition")
+            raise SQLParsingError( stmt.tokens[idx].value, "Invalid Identifier")
 
 
         return idx+1
@@ -320,13 +345,18 @@ class Parser:
             idx = 0
             idx = self.consume_select(stmt, idx)
             idx = self.consume_from(stmt, idx)
-            try:
+
+            if(idx < len(stmt.tokens)):
                 idx = self.consume_where(stmt, idx)
-            except IndexError:
-                print("No WHERE clause found") # TODO: more robust index-checking
+            else:
                 self.conds = []
 
             return QueryFacade.query(self.cols, self.tbls, self.conds)
+
+    def check_index(self, stmt, idx):
+        if(idx >= len(stmt.tokens)):
+            raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Unexpected end of query")
+
 
     def print_curr_token(self, stmt, idx):
         """
