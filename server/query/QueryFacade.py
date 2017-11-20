@@ -29,7 +29,6 @@ class QueryFacade:
         @param from_tables - a list of table filenames
         @param where_conditions - a list of conditions corresponding to the proper conditions
         """
-
         # Load the indices that we need to use
         file_indexers = {}
         for table in from_tables:
@@ -38,26 +37,17 @@ class QueryFacade:
         # Get the conditions that we are going to execute
         column_column_args, column_constant_args = QueryFacade.get_condition_args(file_indexers, where_conditions)
 
-        print(column_column_args)
-        print(column_constant_args)
-
-        result = QueryFacade.do_query(file_indexers, column_column_args, column_constant_args)
-
-        return "FAILURE"
-
-    def do_query(self, file_indexer, col_col_conditions, col_const_conditions):
         # Only need on index to query against
         records = None
-        for args in col_const_conditions:
+        for args in column_constant_args:
             # these are the args that get_condition_args produced
-            # TODO : idk how to do this after Nick's latest changes
-            table_column = args[0].split('.')
-            table_indexer = file_indexer[table_column[0]]
-            index = table_indexer[table_column[1]]
+            table, column = QueryFacade.get_table_and_column_for_select(args[0])
+            table_indexer = file_indexers[table]
+            index = table_indexer[column]
 
             # Defer comparison to index implementation
             # args[1] is a constant, args[2] is the comparisons string ie '<'
-            record_set = index.op(args[1], args[2])
+            record_set = index.op(QueryFacade.try_parse_constant(args[1]), args[2])
 
             # Keep records that pass other conditions
             if records is None:
@@ -65,17 +55,25 @@ class QueryFacade:
             else:
                 records = records.intersection(record_set)
 
-        for args in col_col_conditions:
-            # Get index for each table column
-            # TODO: Still don't know how to do this
-            index1 = indices[args[0]]
-            index2 = indices[args[1]]
+        for args in column_column_args:
+            # Get the first column index
+            table1, column1 = QueryFacade.get_table_and_column_for_select(args[0])
+            table1_indexer = file_indexers[table1]
+            index1 = table1_indexer[column1]
+
+            # Get the second column index
+            table2, column2 = QueryFacade.get_table_and_column_for_select(args[1])
+            table2_indexer = file_indexers[table2]
+            index2 = table2_indexer[column2]
 
             # Perform the comparison for all mn combinations of m values in col1 and n values of col2
-            # TODO: Move multi_op from BTreeIndex to FileIndexer
+            # TODO: this is broken
             for key in index1.items():
-                # Use the other index to
-                record_set = index2.op(key, args[2])
+                # Get records from first table
+                left_records = index1.op(key, '=')
+
+                # Get matching records in second table
+                right_records = index2.op(key, args[2])
 
                 # Keep records that pass other conditions
                 if records is None:
@@ -84,7 +82,7 @@ class QueryFacade:
                     records = records.intersection(record_set)
 
         # TODO: Read the rows of the tables that passed the conditions
-        # rows = read_records(records, tables)
+        return file_indexer.read_and_project(records, )
 
         # TODO: Project the rows into the desired columns
         #return project(rows, columns)
@@ -133,3 +131,7 @@ class QueryFacade:
                 return int(val)
             except ValueError:
                 return val
+
+    @staticmethod
+    def get_table_and_column_for_select(select_column):
+        return select_column.split('.')[:2]

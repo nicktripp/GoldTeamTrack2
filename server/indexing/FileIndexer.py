@@ -102,7 +102,7 @@ class FileIndexer:
         return result
 
 
-    def read_and_project(self, rows, columns):
+        def read_and_project(self, rows, columns):
         """
         Values of rows are byte location in csv file, ie rows[0] is 0th row to read so f.seek(rows[0]); row = f.readline()
         columns is a list of column names (strings)
