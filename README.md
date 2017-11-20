@@ -4,8 +4,8 @@ Gold Team Track 2 is a team for CS 411 implementing a Database Management System
 
 ### Contributors
 
-* Ben is handling the command line tool interface, server setup and connections, and architecting system algorithms. 
-* Nick is developing query parsing, query optimizing, and concurrency controls. 
+* Ben is handling the command line tool interface, server setup and connections, and architecting system algorithms.
+* Nick is developing query parsing, query optimizing, and concurrency controls.
 * Jacob is implementing transactions, data indexing, and efficient table reading.
 
 ## Client Command Line Tool
@@ -13,6 +13,10 @@ Gold Team Track 2 is a team for CS 411 implementing a Database Management System
 We will offer a REPL that accepts queries and sends the queries to our server-side tools. The command line tool will make use of builtin python modules in order to support command history and server http requests.
 
 More info on how to use the client to come (including help statements and examples)
+
+# (Current) Query Structure Ground Rules:
+* Any quotes should be double quotes (""), not single quotes ('')
+* Parenthesis are not currently handled
 
 ## Server Database System
 
