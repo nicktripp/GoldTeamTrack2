@@ -4,7 +4,8 @@ from server.query.QueryFacade import QueryFacade
 
 class Parser:
     """
-    Parses an SQL query
+    Parses an SQL query, token by token using the sqlparse library.
+    Internal representation of the query holds
     """
 
     def __init__(self, query_string):
@@ -13,17 +14,19 @@ class Parser:
         """
         self.query_string = query_string
         self.statements = sqlparse.parse(query_string)
+        self.cols  = []     # Set of selected column names
+        self.tbls  = []     # Set of selected table names
+        self.conds = []     # Set of conditions
 
     @staticmethod
     def validate(stmt):
         """
-        Validates the query to check if it is valid SQL.
+        Performs very basic validation the query to check if it is valid SQL.
         Returns an FALSE if it is invalid SQL.
         """
 
         return stmt.get_type() != u'UNKNOWN' # Check if query begins with a valid DDL or DML keyword
-
-        # TODO more robust validation
+        # More robust validation handled below
 
     def consume_whitespace(self, stmt, idx):
         """
@@ -136,6 +139,7 @@ class Parser:
 
     def consume_condition(self, stmt, idx):
         """
+        # TODO better IndexError handling -> silenced above
         """
         # Eliminate whitespace before COMPARISON
         idx = self.consume_whitespace(stmt, idx)
@@ -143,10 +147,30 @@ class Parser:
         # check that COMPARISON is next token
         if(type(stmt.tokens[idx]) == sqlparse.sql.Comparison):
             self.conds.append(stmt.tokens[idx])
-            # Add comparison to list
-        else:
-            print("UNIMPLEMENTED!") # TODO handle LIKE case
 
+            # Add comparison to list
+        elif (type(stmt.tokens[idx]) == sqlparse.sql.Identifier):
+            # Handling the LIKE case:
+            self.conds.append([stmt.tokens[idx].value])
+
+            idx += 1
+
+            # Eliminate whitespace before LIKE
+            idx = self.consume_whitespace(stmt, idx)
+
+            if(not stmt.tokens[idx].match(sqlparse.tokens.Keyword,'LIKE')):
+                print("ERROR!") # TODO Handle error
+            idx += 1
+            self.conds[-1].append("LIKE")
+
+            idx = self.consume_whitespace(stmt, idx)
+
+            if (type(stmt.tokens[idx]) != sqlparse.sql.Identifier):
+                print("ERROR!") # TODO Handle error
+            self.conds[-1].append(stmt.tokens[idx].value)
+        else:
+            print("Bad Where clause")
+            # print("ERROR!") # TODO Handle error
 
         return idx+1
 
@@ -165,7 +189,6 @@ class Parser:
 
     def parse_where(self, stmt, idx):
         """
-        # TODO condition parsing
         # TODO Multiple conditions
         # TODO LIKE conditon
         # TODO DOES NOT SUPPORT PARENTHESIS
@@ -207,13 +230,6 @@ class Parser:
 
 
             return QueryFacade.query(self.cols, self.tbls, self.conds)
+            # TODO technically the sql parser supports multiple SQL queries
+            #       separated by a ';'.  We only process the first one...
 
-
-        #return sqlparse.format(query, reindent=True, keyword_case='upper')
-
-
-        """
-        Parses the sql query stored in the parser
-
-        # TODO handle subqueries
-        """
