@@ -1,4 +1,6 @@
 from os import listdir
+
+import itertools
 from sqlparse.tokens import Whitespace
 
 from server.indexing.FileIndexer import FileIndexer
@@ -54,15 +56,18 @@ class QueryFacade:
                "\nSELECT " + str(select_columns.__class__) + " FROM " + str(from_tables.__class__) + " WHERE " + str(
             where_conditions.__class__)
 
-    def do_query(self, indices, col_col_conditions, col_const_conditions):
-        # Only need on index to query against
+        # TODO: Get the logic between each condition
+
+        # Do the single table queries
         records = None
         for args in col_const_conditions:
             # these are the args that get_condition_args produced
             index = indices[args[0]]
 
             # Defer comparison to index implementation
-            record_set = index.op(args[1], args[2]) # TODO: make index.op to perform comparison against args[1]
+            # args[1] is a constant, args[2] is the comparisons string ie '<'
+            # TODO: Consider use of NOT
+            record_set = index.op(QueryFacade.try_parse_constant(args[1]), args[2])
 
             # Keep records that pass other conditions
             if records is None:
@@ -70,26 +75,43 @@ class QueryFacade:
             else:
                 records = records.intersection(record_set)
 
-        for args in col_col_conditions:
-            # Get index for each table column
-            index1 = indices[args[0]]
-            index2 = indices[args[1]]
+
+        # Do the join queries
+        cartesian_records =
+        for args in column_column_args:
+            # Get the first column index
+            table1, column1 = QueryFacade.get_table_and_column_for_select(args[0])
+            table1_indexer = file_indexers[table1]
+            index1 = table1_indexer[column1]
+
+            # Get the second column index
+            table2, column2 = QueryFacade.get_table_and_column_for_select(args[1])
+            table2_indexer = file_indexers[table2]
+            index2 = table2_indexer[column2]
+
             # Perform the comparison for all mn combinations of m values in col1 and n values of col2
-            for key in index1: # TODO: add iterator over index keys
-                # Use the other index to
-                record_set = index2.op(key, args[2])
+            for key in index1.items():
+                # Get records from first table
+                # TODO: Consider use of NOT
+                left_records = index1.op(key, '=')
+
+                # Get matching records in second table
+                right_records = index2.op(key, args[2])
+
+                # We need the cartesian product of these as tuples
+                cartesian = itertools.product(left_records, right_records)
 
                 # Keep records that pass other conditions
-                if records is None:
-                    records = record_set
+                if cartesian_records is None:
+                    cartesian_records =  cartesian
                 else:
-                    records = records.intersection(record_set)
+                    # TODO: Use OR or AND
+                    cartesian_records = cartesian_records.intersection(cartesian)
 
-        # TODO: Read the rows of the tables that passed the conditions
-        # rows = read_records(records, tables)
 
-        # TODO: Project the rows into the desired columns
-        #return project(rows, columns)
+
+        # TODO: if cartesian_records is not empty filter it with rows of records that passed the constant constraints
+        return file_indexer.read_and_project(records, select_columns)
 
     def do_join_query(self, indices, col_col_conditions, col_const_conditions):
         """

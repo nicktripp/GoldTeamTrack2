@@ -155,13 +155,11 @@ class BTreeIndex:
             block = block.next_leaf
 
     def like(self, key):
-        # TODO: We can use greater than if it does not start with a %
         val, block = self.btree.get_with_block(self.btree.smallest)
         ret = {}
         while True:
             for i in range(len(block.keys)):
-                # TODO: regex or something
-                pattern = re.compile(key)
+                pattern = re.compile(key.replace("%", ".*"))
                 check = pattern.match(block.keys[i])
                 if check:
                     ret[block.keys[i]] = block.values[i]
