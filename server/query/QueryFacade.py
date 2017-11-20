@@ -30,12 +30,6 @@ class QueryFacade:
         @param where_conditions - a list of conditions corresponding to the proper conditions
         """
 
-<<<<<<< HEAD
-        # Placeholder:
-        # return "SELECT " + str(select_columns) + " FROM " + str(from_tables) + " WHERE " + str(where_conditions) + \
-        #         "\nSELECT " + str(select_columns.__class__) + " FROM " + str(from_tables.__class__) + " WHERE " + str(where_conditions.__class__)
-        return "SELECT " + str(select_columns) + " FROM " + str(from_tables) + " WHERE " + str(where_conditions)
-=======
         # Load the indices that we need to use
         indices = {}
         for column in select_columns:
@@ -69,7 +63,6 @@ class QueryFacade:
 
             # Defer comparison to index implementation
             record_set = index.op(args[1], args[2]) # TODO: make index.op to perform comparison against args[1]
->>>>>>> d74203f2577b473ef94f7f6e30cac2351889e91b
 
             # Keep records that pass other conditions
             if records is None:

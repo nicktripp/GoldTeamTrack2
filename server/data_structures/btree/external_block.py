@@ -29,6 +29,12 @@ class ExternalBlock(Block):
                 return self.values[i]
         return None
 
+    def get_with_block(self, key):
+        for i, ki in enumerate(self.keys):
+            if ki == key:
+                return self.values[i], self
+        return None, self
+
     def insert_recurse(self, key, value):
         """
         Stops the recursion through the InternalBlocks by inserting into self

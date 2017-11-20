@@ -23,6 +23,7 @@ class BTree:
         right.values = [initial_values[sorted_keys[1]], initial_values[sorted_keys[2]]]
         self.root.keys = [sorted_keys[1]]
         self.root.values = [left, right]
+        self.smallest = sorted_keys[0]
 
     def __repr__(self):
         return str(self.root)
@@ -45,3 +46,23 @@ class BTree:
             root.values = [self.root, right]
             root.keys = [key]
             self.root = root
+
+        if key < self.smallest:
+            self.smallest = key
+
+    def get_with_block(self, key):
+        return self.root.get_with_block(key)
+
+    def items(self):
+        # Get the smallest block
+        block = self.get_with_block(self.smallest)[1]
+
+        # Yield all of the key value pairs in an external block then lookup the next external block
+        while True:
+            for i in range(len(block.keys)):
+                k, v = block.keys[i], block.values[i]
+                yield k, v
+            if block.next_leaf is None:
+                break
+            block = block.next_leaf
+
