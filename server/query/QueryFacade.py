@@ -1,4 +1,6 @@
 from os import listdir
+
+import itertools
 from sqlparse.tokens import Whitespace
 
 from server.indexing.FileIndexer import FileIndexer
@@ -49,6 +51,7 @@ class QueryFacade:
 
             # Defer comparison to index implementation
             # args[1] is a constant, args[2] is the comparisons string ie '<'
+            # TODO: Consider use of NOT
             record_set = index.op(QueryFacade.try_parse_constant(args[1]), args[2])
 
             # Keep records that pass other conditions
@@ -58,6 +61,7 @@ class QueryFacade:
                 records = records.intersection(record_set)
 
         # Do the join queries
+        cartesian_records =
         for args in column_column_args:
             # Get the first column index
             table1, column1 = QueryFacade.get_table_and_column_for_select(args[0])
@@ -70,28 +74,27 @@ class QueryFacade:
             index2 = table2_indexer[column2]
 
             # Perform the comparison for all mn combinations of m values in col1 and n values of col2
-            # TODO: this is broken
             for key in index1.items():
                 # Get records from first table
+                # TODO: Consider use of NOT
                 left_records = index1.op(key, '=')
 
                 # Get matching records in second table
                 right_records = index2.op(key, args[2])
 
                 # We need the cartesian product of these as tuples
-                
+                cartesian = itertools.product(left_records, right_records)
 
                 # Keep records that pass other conditions
-                if records is None:
-                    records = record_set
+                if cartesian_records is None:
+                    cartesian_records =  cartesian
                 else:
-                    records = records.intersection(record_set)
+                    # TODO: Use OR or AND
+                    cartesian_records = cartesian_records.intersection(cartesian)
 
-        # TODO: Read the rows of the tables that passed the conditions
+
+        # TODO: if cartesian_records is not empty filter it with rows of records that passed the constant constraints
         return file_indexer.read_and_project(records, select_columns)
-
-        # TODO: Project the rows into the desired columns
-        #return project(rows, columns)
 
     def do_join_query(self, indices, col_col_conditions, col_const_conditions):
         """
