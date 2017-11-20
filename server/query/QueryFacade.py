@@ -120,7 +120,7 @@ class QueryFacade:
             if(type(condition) == type([]) and condition[1] == "LIKE"):
                 column = str(condition[0])
                 comparison = "LIKE"
-                other = str(conditon[2])
+                other = str(condition[2])
             else:
                 tokens = [t for t in condition.tokens if t._get_repr_name() != 'Whitespace']
                 column = str(tokens[0])
