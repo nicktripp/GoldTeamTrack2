@@ -31,16 +31,6 @@ class BTreeIndex:
         with open(index_directory + index_name, 'wb') as f:
             pickle.dump(self.btree, f, pickle.HIGHEST_PROTOCOL)
 
-    @staticmethod
-    def get_index(index_directory, index_name):
-        pickle_file = index_directory + index_name
-        if os.path.isfile(pickle_file):
-            print("Loading index from %s" % pickle_file)
-            with open(pickle_file, 'rb') as f:
-                return pickle.load(f)
-        else:
-            print("Index was not found")
-
     def get_initial_values(self, keys, values):
         assert(len(keys) == len(values))
         initial_values = {}

@@ -23,31 +23,30 @@ class Column:
 
     def __repr__(self):
         return "Column %s[%s]" % (self.name, self.type)
+
     @staticmethod
     def get_from_headers(headers_line):
         columns = headers_line[:-1].split(',')
         return [Column(name) for name in columns]
 
-
-def get_type(value):
-    # Try to parse as int, float, boolean, then date
-    # Fallback to text
-    try:
-        int(value)
-        return ColumnType.INTEGER
-    except ValueError:
+    def get_type(value):
+        # Try to parse as int, float, boolean, then date
+        # Fallback to text
         try:
-            float(value)
-            return ColumnType.REAL
+            parse(value)
+            return ColumnType.INTEGER
         except ValueError:
             try:
-                parse(value)
-                return ColumnType.DATE
+                float(value)
+                return ColumnType.REAL
             except ValueError:
                 try:
-                    bool(value)
-                    return ColumnType.BOOLEAN
+                    int(value)
+                    return ColumnType.DATE
                 except ValueError:
-                    return ColumnType.TEXT
+                    if value in {'True', 'False', 'true', 'false'}:
+                        return ColumnType.BOOLEAN
+                    else:
+                        return ColumnType.TEXT
 
-    return ColumnType.UNKNOWN
+        return ColumnType.UNKNOWN
