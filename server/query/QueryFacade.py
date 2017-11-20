@@ -31,38 +31,23 @@ class QueryFacade:
         @param from_tables - a list of table filenames
         @param where_conditions - a list of conditions corresponding to the proper conditions
         """
-
         # Load the indices that we need to use
-        indices = {}
-        for column in select_columns:
-            index = FileIndexer.get_indexer(relative_path, *column.split('.'))
-            indices[column] = index
-
-        # Order the conditions that will be executed
-        column_column_args, column_constant_args = QueryFacade.get_condition_args(indices, where_conditions)
-
-        print(column_column_args)
-        print(column_constant_args)
-
-        # Identify the csv files that we will query
+        file_indexers = {}
         for table in from_tables:
-            print(table)
+            file_indexers[table] = FileIndexer(relative_path, table)
 
-        # Identify the where conditions
-        for condition in where_conditions:
-            print(condition)
-
-        return "SELECT " + str(select_columns) + " FROM " + str(from_tables) + " WHERE " + str(where_conditions) + \
-               "\nSELECT " + str(select_columns.__class__) + " FROM " + str(from_tables.__class__) + " WHERE " + str(
-            where_conditions.__class__)
+        # Get the conditions that we are going to execute
+        column_column_args, column_constant_args = QueryFacade.get_condition_args(file_indexers, where_conditions)
 
         # TODO: Get the logic between each condition
 
         # Do the single table queries
         records = None
-        for args in col_const_conditions:
+        for args in column_constant_args:
             # these are the args that get_condition_args produced
-            index = indices[args[0]]
+            table, column = QueryFacade.get_table_and_column_for_select(args[0])
+            table_indexer = file_indexers[table]
+            index = table_indexer[column]
 
             # Defer comparison to index implementation
             # args[1] is a constant, args[2] is the comparisons string ie '<'
@@ -75,9 +60,8 @@ class QueryFacade:
             else:
                 records = records.intersection(record_set)
 
-
         # Do the join queries
-        cartesian_records =
+        cartesian_records = None
         for args in column_column_args:
             # Get the first column index
             table1, column1 = QueryFacade.get_table_and_column_for_select(args[0])
@@ -109,25 +93,12 @@ class QueryFacade:
                     cartesian_records = cartesian_records.intersection(cartesian)
 
 
-
         # TODO: if cartesian_records is not empty filter it with rows of records that passed the constant constraints
         return file_indexer.read_and_project(records, select_columns)
 
-    def do_join_query(self, indices, col_col_conditions, col_const_conditions):
-        """
-        :param indices:
-        :param col_col_conditions: column to column comparisons that may be across tables
-        :param col_const_conditions:
-        :return:
-        """
-
-        # TODO: Perform comparisons the same way, but get the row locations for both files
-
-        # TODO: Read row locations from both tables, project, and concatenate to single row
-
-
     @staticmethod
     def get_condition_args(indices, where_conditions):
+        # TODO: change to work with FileIndexer
         column_column_args = []
         column_constant_args = []
         for condition in where_conditions:
@@ -156,3 +127,7 @@ class QueryFacade:
                 return int(val)
             except ValueError:
                 return val
+
+    @staticmethod
+    def get_table_and_column_for_select(select_column):
+        return select_column.split('.')[:2]
