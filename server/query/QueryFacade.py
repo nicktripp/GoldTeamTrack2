@@ -117,10 +117,15 @@ class QueryFacade:
         column_column_args = []
         column_constant_args = []
         for condition in where_conditions:
-            tokens = [t for t in condition.tokens if t._get_repr_name() != 'Whitespace']
-            column = str(tokens[0])
-            comparison = str(tokens[1])
-            other = str(tokens[2])
+            if(type(condition) == type([]) and condition[1] == "LIKE"):
+                column = str(condition[0])
+                comparison = "LIKE"
+                other = str(conditon[2])
+            else:
+                tokens = [t for t in condition.tokens if t._get_repr_name() != 'Whitespace']
+                column = str(tokens[0])
+                comparison = str(tokens[1])
+                other = str(tokens[2])
             if other[0] == "\"" and other[-1] == "\"":
                 constant = QueryFacade.try_parse_constant(other[1:-1])
                 column_constant_args.append((column, constant, comparison))
