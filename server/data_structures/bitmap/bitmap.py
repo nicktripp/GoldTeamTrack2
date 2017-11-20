@@ -1,0 +1,4 @@
+class Bitmap:
+    """
+    Bitmap implementation
+    """

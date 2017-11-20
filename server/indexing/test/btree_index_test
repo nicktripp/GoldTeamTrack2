@@ -8,19 +8,17 @@ if __name__ == "__main__":
     if not os.path.exists(pickle_dir):
         os.makedirs(pickle_dir)
 
-    column_values = 'abcdefghijklmnopqrstuvwxyz'*2
-    column_locations = [i for i in range(26)] + [i for i in reversed(range(26))]
-    index = BTreeIndex(pickle_dir, 'alphabet_soup', column_values, column_locations)
-
-    for cv in column_values:
-        print(index.where(cv))
-    print(index.where('!'))
-
     # Check that it worked
     # Read Spider-Man 3,2007,Sam Raimi,USA,English,258000000,Action|Adventure|Romance
 
+    results = {
+        'Spider-Man 3,2007,Sam Raimi,USA,English,258000000,Action|Adventure|Romance,sandman|spider man|symbiote|venom|villain,2.35,0,0,156,Color,PG-13,J.K. Simmons,24000,James Franco,11000,Kirsten Dunst,4000,46055,392,1902,383056,0,6.2,336530303,http://www.imdb.com/title/tt0413300/?ref_=fn_tt_tt_1\n',
+        'Spider-Man 3,2007,Sam Raimi,USA,English,258000000,Action|Adventure|Romance,sandman|spider man|symbiote|venom|villain,2.35,0,0,156,Color,PG-13,J.K. Simmons,24000,James Franco,11000,Kirsten Dunst,4000,46055,392,1902,383071,0,6.2,336530303,http://www.imdb.com/title/tt0413300/?ref_=fn_tt_tt_1\n'
+    }
     movie_title_index = BTreeIndex.get_index(pickle_dir, 'movie_title')
-    result = movie_title_index.lookup('Spider-Man 3')
-    print(result)
+    with open('../../../data/movies.csv', 'r') as f:
+        for row_loc in movie_title_index['Spider-Man 3']:
+            f.seek(row_loc)
+            assert f.readline() in results, "There are two Spider-Man 3 entries"
 
-    print("DONE")
+    print("SUCCESS")
