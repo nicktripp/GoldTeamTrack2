@@ -109,3 +109,5 @@ venv.bak/
 .DS_Store
 data
 tmp
+!/data/database.csv
+!/data/movies.csv

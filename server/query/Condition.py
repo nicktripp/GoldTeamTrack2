@@ -17,8 +17,9 @@ class Condition:
     def apply(self):
         pass
 
-    def np_apply(self,vals1, vals2):
+    def np_apply(self, vals1, vals2):
         pass
+
 
 class ConditionLessThan(Condition):
     def __init__(self, first, second):
@@ -69,7 +70,7 @@ class ConditionEqual(Condition):
             return False
         return val1 == val2
 
-    def np_apply(self,vals1, vals2):
+    def np_apply(self, vals1, vals2):
         return ne.evaluate('vals1 == vals2')
 
 
