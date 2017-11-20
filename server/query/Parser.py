@@ -1,17 +1,27 @@
 import sqlparse
 
 from server.query.QueryFacade import QueryFacade
+from server.query.SQLParsingError import SQLParsingError
+
+LOG = True
 
 class Parser:
     """
     Parses an SQL query, token by token using the sqlparse library.
-    Internal representation of the query holds
+
+    Internal representation of the query holds tokens at indicies.
+    Most of the following functions "consume" a token or set of tokens
+        by processing it and then advancing the "cursor" as appropriate.
+
+    TODO:
+        * More robust index-checking
     """
 
     def __init__(self, query_string):
         """
         Loads a new query into the parser.
         """
+
         self.query_string = query_string
         self.statements = sqlparse.parse(query_string)
         self.cols  = []     # Set of selected column names
@@ -30,17 +40,23 @@ class Parser:
 
     def consume_whitespace(self, stmt, idx):
         """
-        Returns the next idx that isn't whitespace without performing any actions.
+        Advances the cursor by returning the index of the next non-whitespace
+            token without performing any actions.
+
+        @returns the specified index.
         """
         i = idx
         while (i < len(stmt.tokens) and stmt.tokens[i].match(sqlparse.tokens.Whitespace,' ',regex=True)):
             i += 1
         return i
 
-
     def validate_identifier(self, stmt, idx):
         """
-        Tests the token at the given index to see if it is a valid Identifier or list of identifers
+        Tests the token at the given index to see if it is either
+            a valid Identifier or
+            a list of identifers
+
+        @returns a boolean
         """
         return                                                          \
             stmt.tokens[idx].match(sqlparse.tokens.Wildcard, '*') or    \
@@ -49,21 +65,26 @@ class Parser:
 
     def consume_select(self, stmt, idx):
         """
-        Parses the SELECT COLS part of the query, starting at index idx.
-        Stores the selected cols in self.cols as a list of strings.
-        Returns the new cursor position after the SELECT part.
+        Consumes a token phrase in the form of SELECT [columns].
 
-        # TODO Does not handle keywords like DISTINCT
+        Stores the columns specified in the self.cols list.
+        Advances the cursor to the index after this token phrase.
+
+        TODO:
+        * Handle keywords such as 'DISTINCT'
+        * Handle renaming columns
+
+        @returns the index of the token after this token phrase
         """
         if (stmt.get_type() != u'SELECT'):
-            pass # TODO THROW ERROR
+            raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Not a SELECT statement")
 
         # Eliminate leading whitespace
         idx = self.consume_whitespace(stmt, idx)
 
         # Sanity check that SELECT is next token
         if(not stmt.tokens[idx].match(sqlparse.tokens.DML, "SELECT")):
-            pass # TODO THROW ERROR
+            raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Unrecognized SELECT format")
         idx += 1 # Advance cursor
 
         # Eliminate whitespace trailing after SELECT
@@ -71,7 +92,7 @@ class Parser:
 
         # Next Token is our set of selected cols
         if (not self.validate_identifier(stmt, idx)):
-            pass # TODO THROW ERROR
+            raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Unrecognized SELECT format")
 
         self.cols = self.token_to_list(stmt.tokens[idx])
 
@@ -79,7 +100,11 @@ class Parser:
 
     def token_to_list(self, token):
         """
-        Converts a Token or TokenList to a list of strings
+        Converts a Token or TokenList to a list of strings.
+
+        Can only handle Identifiers, IdentifierLists, and Wildcards.
+
+        @returns a list of the string value of tokens
         """
         if(type(token) == sqlparse.sql.Identifier or token.ttype == sqlparse.tokens.Wildcard):
             return [token.value]
@@ -87,10 +112,15 @@ class Parser:
             # Convert list recursively
             return self.tokenlist_to_list(token)
         else:
-            # TODO THROW ERROR! Unknown token attempted to convert
-            return ["ERROR!"]
+            raise SQLParsingError( token.value, "Not an Identifier Token")
+
 
     def tokenlist_to_list(self, tokenlist):
+        """
+        Helper function that converts a TokenList into a list of tokens.
+
+        @returns a list of the string value of tokens.
+        """
         l = []
         for sub_token in tokenlist.tokens:
             if(type(sub_token) == sqlparse.sql.Identifier or sub_token.ttype == sqlparse.tokens.Wildcard):
@@ -100,46 +130,122 @@ class Parser:
 
     def consume_from(self, stmt, idx):
         """
-        # TODO: DOES NOT HANDLE JOINS!!
+        Consumes a token phrase in the form of FROM [tables].
+
+        Stores the tables specified in the self.tbls list.
+        Advances the cursor to the index after this token phrase.
+        Renaming tables is supported:
+            Consuming 'FROM movies M, oscars O' stores ['movies M','oscars O']
+            in self.tbls
+
+        TODO:
+            * Handle joins
+
+        @returns the index of the token after this token phrase
         """
 
         # Eliminate leading whitespace
         idx = self.consume_whitespace(stmt, idx)
 
+        self.print_curr_token(stmt, idx) # LOG
+
         # Sanity check that FROM is next token
         if(not stmt.tokens[idx].match(sqlparse.tokens.Keyword,'FROM')):
-            pass # TODO THROW ERROR
+            raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Unrecognized FROM format")
         idx += 1 # Advance cursor
 
         # Eliminate whitespace trailing after FROM
         idx = self.consume_whitespace(stmt, idx)
 
+        self.print_curr_token(stmt, idx) # LOG
+
         # Next Token is our set of selected tables
         if (not self.validate_identifier(stmt, idx)):
-            pass # TODO THROW ERROR
+            raise SQLParsingError( stmt.tokens[idx].value, "Not an Identifier Token")
+
 
         self.tbls = self.token_to_list(stmt.tokens[idx])
 
         return idx+1
 
-
     def consume_where(self, stmt, idx):
+        """
+        Consumes a WHERE token.
+        Most of the meat of this function is in parse_where()
+
+        Stores the conditions specified in the self.conds list.
+        Advances the cursor to the index after this token.
+
+        @returns the index of the token after the WHERE token
+        """
 
         # Eliminate leading whitespace
         idx = self.consume_whitespace(stmt, idx)
 
+        self.print_curr_token(stmt, idx) # LOG
+
         # Sanity check that WHERE is next token
         if(not type(stmt.tokens[idx]) == sqlparse.sql.Where):
-            pass # TODO THROW ERROR
+            raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Unrecognized WHERE format")
 
         self.where = stmt.tokens[idx]
         self.parse_where(self.where, 0)
 
         return idx+1
 
+    def parse_where(self, stmt, idx):
+        """
+        Consumes a token phrase in the form of
+            WHERE <Comparison> (<AND|OR> ...) or
+            WHERE <Identifier> LIKE <Identifier> (<AND|OR> ...)
+
+        Stores the conditions specified in the self.conds list.
+        Advances the cursor to the index after this token phrase.
+
+        Any included parentheses will not be processed and will result in an error.
+
+        TODO:
+            * Handle complex (Parentheses) boolean logic
+            * More robust error checking
+
+        @returns the index of the token after this token phrase
+        """
+
+        self.print_curr_token(stmt, idx)
+
+        # Sanity check that WHERE is next token
+        if(stmt.tokens[idx].match(sqlparse.tokens.Keyword,"WHERE")):
+            raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Unrecognized WHERE format")
+        idx = idx + 1
+
+        self.conds = []
+
+        while(idx < len(stmt.tokens)):
+            idx = self.consume_condition(stmt, idx)
+            if(idx >= len(stmt.tokens)):
+                break
+            idx = self.consume_whitespace(stmt, idx)
+            if(idx >= len(stmt.tokens)):
+                break
+            idx = self.consume_logic(stmt, idx)
+
+        return idx+1
+
     def consume_condition(self, stmt, idx):
         """
-        # TODO better IndexError handling -> silenced above
+        Consumes the part of a WHERE token phrase after the WHERE.
+        Thus, in consumes token phrases in the form of
+            (<Comparison>) or
+            (<Identifier> LIKE <Identifier>)
+
+        Appends the condition encountered to the list stored in self.conds, where
+            (<Comparison>) -> [<Comparison>]
+            (<Identifier> LIKE <Identifier>) -> [Identifier.value, 'LIKE', Identifier.value]
+
+        TODO:
+            * Further parse the conditions for ease of use.
+
+        @returns the index of the token after this token phrase
         """
         # Eliminate whitespace before COMPARISON
         idx = self.consume_whitespace(stmt, idx)
@@ -159,64 +265,57 @@ class Parser:
             idx = self.consume_whitespace(stmt, idx)
 
             if(not stmt.tokens[idx].match(sqlparse.tokens.Keyword,'LIKE')):
-                print("ERROR!") # TODO Handle error
+                raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Unrecognized WHERE format")
             idx += 1
             self.conds[-1].append("LIKE")
 
             idx = self.consume_whitespace(stmt, idx)
 
-            if (type(stmt.tokens[idx]) != sqlparse.sql.Identifier):
-                print("ERROR!") # TODO Handle error
+            if (self.validate_identifier(stmt, idx)):
+                raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Unrecognized WHERE format")
+
             self.conds[-1].append(stmt.tokens[idx].value)
         else:
-            print("Bad Where clause")
-            # print("ERROR!") # TODO Handle error
+            raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Invalid WHERE Condition")
+
 
         return idx+1
 
     def consume_logic(self, stmt, idx):
         """
+        Consumes a boolean logic phrase in the style of (AND|OR).
+        Appends the boolean operator to self.conds, separating conditons.
+
+        @returns the index of the token after this token phrase
         """
         if(stmt.tokens[idx].match(sqlparse.tokens.Keyword,"AND")):
             self.conds.append("AND")
         elif(stmt.tokens[idx].match(sqlparse.tokens.Keyword,"OR")):
             self.conds.append("OR")
         else:
-            pass # TODO THROW ERROR
+            raise SQLParsingError( stmt.tokens[idx].value, "Not a boolean operator")
+
 
         return idx + 1
 
 
-    def parse_where(self, stmt, idx):
-        """
-        # TODO Multiple conditions
-        # TODO LIKE conditon
-        # TODO DOES NOT SUPPORT PARENTHESIS
-        """
-        # Sanity check that WHERE is next token
-        if(stmt.tokens[idx].match(sqlparse.tokens.Keyword,"WHERE")):
-            pass # TODO THROW ERROR
-        idx = idx + 1
-
-        self.conds = []
-
-        while(idx < len(stmt.tokens)):
-            idx = self.consume_condition(stmt, idx)
-            if(idx >= len(stmt.tokens)):
-                break
-            idx = self.consume_whitespace(stmt, idx)
-            if(idx >= len(stmt.tokens)):
-                break
-            idx = self.consume_logic(stmt, idx)
-
-        return idx+1
-
-
     def parse_select_from_where(self):
+        """
+        Parses a standard SELECT-FROM-WHERE statement.
+
+        Currently, it only proecesses a single statment (the first one) and ignores
+            all others following, even though sqlparser supports multiple
+            statements separated by semicolons.
+
+        TODO:
+            * Handle more than one statement at once.
+
+        @returns the results of the query after passing it on to QueryFacade.
+        """
 
         for stmt in self.statements:
             if (not self.validate(stmt)):
-                raise RuntimeError('Query statement is invalid: ' + stmt)
+                raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), 'Unrecognized SQL')
 
             idx = 0
             idx = self.consume_select(stmt, idx)
@@ -224,11 +323,15 @@ class Parser:
             try:
                 idx = self.consume_where(stmt, idx)
             except IndexError:
-                print("No WHERE clause found")
+                print("No WHERE clause found") # TODO: more robust index-checking
                 self.conds = []
 
-
             return QueryFacade.query(self.cols, self.tbls, self.conds)
-            # TODO technically the sql parser supports multiple SQL queries
-            #       separated by a ';'.  We only process the first one...
 
+    def print_curr_token(self, stmt, idx):
+        """
+        If logging is turned on, prints the value of the token at the specified
+            index.
+        """
+        if LOG:
+            print("Current token: '" + stmt.tokens[idx].value + "'")

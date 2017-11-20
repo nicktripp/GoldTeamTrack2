@@ -14,9 +14,10 @@ We will offer a REPL that accepts queries and sends the queries to our server-si
 
 More info on how to use the client to come (including help statements and examples)
 
-# (Current) Query Structure Ground Rules:
+### (Current) Query Structure Ground Rules:
 * Any quotes should be double quotes (""), not single quotes ('')
 * Parenthesis are not currently handled
+* All filepaths should be in quotations: i.e. "./movies.csv"
 
 ## Server Database System
 
