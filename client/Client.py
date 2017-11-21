@@ -1,6 +1,8 @@
 import http
 import cmd
 import requests
+import time
+
 
 class Client(cmd.Cmd):
     def __init__(self):
@@ -21,10 +23,12 @@ class Client(cmd.Cmd):
         return
 
     def do_query(self, query):
+        t1 = time.time()
         print(query)
         r = requests.post("http://127.0.0.1:5000/query/", data={"query":query})
 
         print(r.text)
+        print(time.time() - t1, ' elapsed')
 
         return
 

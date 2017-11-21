@@ -121,7 +121,7 @@ class FileIndexer:
 
 
             # for each row seek readline extract desired columns
-            final_rows = [columns]
+            final_rows = [','.join(columns)]
             for row in rows:
                 f.seek(row)
                 curr_row = f.readline()[:-1].split(',')
@@ -130,4 +130,4 @@ class FileIndexer:
                     row.append(curr_row[index])
                 final_rows.append(','.join(row))
 
-            return final_rows
+            return '\n'.join(final_rows)
