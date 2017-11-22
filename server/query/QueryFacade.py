@@ -11,8 +11,12 @@ class QueryFacade:
     We will hide the table querying interface behind this class
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, data_sources):
+        """
+        Data sources are supplied by the QueryOptimizer
+        :param data_sources:
+        """
+        self.data_sources = data_sources
 
     @staticmethod
     def prepare(relative_path):
