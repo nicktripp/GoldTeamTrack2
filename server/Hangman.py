@@ -29,17 +29,14 @@ class Hangman:
 
             # Optimize a plan for the query facade
             optimizer = QueryOptimizer(parsed_query)
-            data_sources = optimizer.get_data_sources()
             execution_plan = optimizer.get_plan()
 
             # Execute the plan through the facade
-            facade = QueryFacade(data_sources)
-            results = []
-            for step in execution_plan:
-                results.append(facade.execute(step))
+            facade = QueryFacade(optimizer.tables)
+            results = facade.execute_plan(execution_plan)
 
             # Aggregate the results
-            projector = TableProjector(data_sources)
+            projector = TableProjector(optimizer.tables, optimizer.projection_columns)
             query_output = projector.aggregate(results)
             return query_output
         except SQLParsingError as e:

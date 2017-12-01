@@ -11,12 +11,51 @@ class QueryFacade:
     We will hide the table querying interface behind this class
     """
 
-    def __init__(self, data_sources):
+    def __init__(self, tables):
         """
         Data sources are supplied by the QueryOptimizer
-        :param data_sources:
+        :param tables:
         """
-        self.data_sources = data_sources
+        self._tables = tables
+
+    def execute_plan(self, plan):
+        """
+        Executes a QueryPlan and returns a list of list of row start locations
+
+        The results are the locations of read in the corresponding tables as passed
+        in the constructor.
+
+        results[i][0] corresponds to the ith query result's entire row location in
+        the csv file for the 0th table.
+        [
+            [1234, 1234, 23456],
+            [2435, 3456, 3456],
+            ...
+        ]
+        :param plan:
+        :return:
+        """
+        for step in plan:
+            pass
+
+        return []
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     @staticmethod
     def prepare(relative_path):
