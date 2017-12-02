@@ -1,6 +1,6 @@
 import sqlparse
 
-from server.query.QueryFacade import QueryFacade
+from server.query.Comparison import Comparison
 from server.query.SQLParsingError import SQLParsingError
 
 LOG = True
@@ -330,7 +330,7 @@ class Parser:
         """
         Parses a standard SELECT-FROM-WHERE statement.
 
-        Currently, it only proecesses a single statment (the first one) and ignores
+        Currently, it only processes a single statement (the first one) and ignores
             all others following, even though sqlparser supports multiple
             statements separated by semicolons.
 
@@ -353,7 +353,11 @@ class Parser:
             else:
                 self.conds = []
 
-            return QueryFacade.query(self.cols, self.tbls, self.conds)
+            # Convert sqlparse Comparison to our Comparison
+            self.conds = [Comparison(c) for c in self.conds]
+
+            return self.cols, self.tbls, self.conds
+            # return QueryFacade.query(self.cols, self.tbls, self.conds)
 
     def check_index(self, stmt, idx):
         """
