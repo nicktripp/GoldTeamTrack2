@@ -16,8 +16,14 @@ class QueryOptimizer:
         `WHERE A.a = B.a`
     """
 
-    def __init__(self, parsed_query, relative_path="../../"):
-        self._parsed_query = parsed_query
+    def __init__(self, cols, tbls, conds, relative_path="../../"):
+        # String Parsings of column, table, and condition values
+        self._cols = cols
+        self._tbls = tbls
+        self._conds = conds
+
+        # self._parsed_query = parsed_query
+
         self._relative_path = relative_path
 
         self._tables = []

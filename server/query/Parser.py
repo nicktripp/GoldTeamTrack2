@@ -1,6 +1,6 @@
 import sqlparse
 
-from server.query.QueryFacade import QueryFacade
+from server.query.Comparison import Comparison
 from server.query.SQLParsingError import SQLParsingError
 
 LOG = True
@@ -225,7 +225,7 @@ class Parser:
             raise SQLParsingError( sqlparse.format(stmt.value, keyword_case='upper'), "Expected 'WHERE' keyword")
         idx = idx + 1
 
-        self.conds = []
+        self.conds = [[]]
 
         expecting = True # Are we expecting more tokens as input?
 
@@ -270,12 +270,12 @@ class Parser:
 
         # check that COMPARISON is next token
         if(type(stmt.tokens[idx]) == sqlparse.sql.Comparison):
-            self.conds.append(stmt.tokens[idx])
+            self.conds[-1].append(Comparison(stmt.tokens[idx]))
 
             # Add comparison to list
         elif (type(stmt.tokens[idx]) == sqlparse.sql.Identifier):
             # Handling the LIKE case:
-            self.conds.append([stmt.tokens[idx].value])
+            self.conds.append[-1]([stmt.tokens[idx].value])
 
             idx += 1
             self.check_index(stmt,idx)
@@ -316,10 +316,14 @@ class Parser:
 
         @returns the index of the token after this token phrase
         """
+        if len(self.conds) == 0:
+            self.conds.append([])
         if(stmt.tokens[idx].match(sqlparse.tokens.Keyword,"AND")):
-            self.conds.append("AND")
+            # Continue appending to most recent logic_group
+            pass
         elif(stmt.tokens[idx].match(sqlparse.tokens.Keyword,"OR")):
-            self.conds.append("OR")
+            # Start a new logic group for new AND conditions
+            self.conds.append([])
         else:
             raise SQLParsingError( stmt.tokens[idx].value, "Not a boolean operator")
 
@@ -330,7 +334,7 @@ class Parser:
         """
         Parses a standard SELECT-FROM-WHERE statement.
 
-        Currently, it only proecesses a single statment (the first one) and ignores
+        Currently, it only processes a single statement (the first one) and ignores
             all others following, even though sqlparser supports multiple
             statements separated by semicolons.
 
@@ -353,7 +357,8 @@ class Parser:
             else:
                 self.conds = []
 
-            return QueryFacade.query(self.cols, self.tbls, self.conds)
+            return self.cols, self.tbls, self.conds
+            # return QueryFacade.query(self.cols, self.tbls, self.conds)
 
     def check_index(self, stmt, idx):
         """
