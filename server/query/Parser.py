@@ -30,8 +30,15 @@ class Parser:
         self.query_string = query_string
         self.statements = sqlparse.parse(query_string)
         self.cols  = []     # Set of selected column names
-        self.tbls  = []     # Set of selected table names
-        self.conds = []     # Set of conditions
+        self.tbls  = []     # Set of selected table names.  Format is a 2D list,  [[],[]] where each sublist is CROSSED and each sublist is JOINED together
+        self.conds = []     # Set of conditions.  Format is a list of lists of conditions.
+                            # TODO: IMPLEMENT THIS\/\/
+                            #   Each sublist is a set of conditions joined by ANDS, and each sublist is joined by an OR.
+                            #   [
+                            #       [ <SomeCondition>, <ANDAnotherCondition> ] (Conditions AND)
+                            #       [ <ORAnotherConditionSet> ]
+                            #   ]
+                            # TODO: IMPLEMENT THIS^^
 
     @staticmethod
     def validate(stmt):
@@ -257,8 +264,6 @@ class Parser:
             (<Comparison>) -> [<Comparison>]
             (<Identifier> LIKE <Identifier>) -> [Identifier.value, 'LIKE', Identifier.value]
 
-        TODO:
-            * Further parse the conditions for ease of use.
 
         @returns the index of the token after this token phrase
         """
@@ -270,9 +275,8 @@ class Parser:
 
         # check that COMPARISON is next token
         if(type(stmt.tokens[idx]) == sqlparse.sql.Comparison):
-            self.conds.append(stmt.tokens[idx])
+            self.conds.append(stmt.tokens[idx]) # Add comparison to list
 
-            # Add comparison to list
         elif (type(stmt.tokens[idx]) == sqlparse.sql.Identifier):
             # Handling the LIKE case:
             self.conds.append([stmt.tokens[idx].value])

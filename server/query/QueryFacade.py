@@ -142,7 +142,7 @@ class QueryFacade:
         # TODO: if cartesian_records is not empty filter it with rows of records that passed the constant constraints
         table_columns = {}
         for select in select_columns:
-            table, column = select.split('.')
+            table, column = select.split('.')  # TODO: Handle * case
             if table in table_columns:
                 table_columns[table].append(column)
             else:
@@ -169,6 +169,7 @@ class QueryFacade:
                 column = str(tokens[0])
                 comparison = str(tokens[1])
                 other = str(tokens[2])
+
             if other[0] == "\"" and other[-1] == "\"":
                 constant = QueryFacade.try_parse_constant(other[1:-1])
                 column_constant_args.append((column, constant, comparison))

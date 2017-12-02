@@ -29,6 +29,7 @@ class Column:
         columns = headers_line[:-1].split(',')
         return [Column(name) for name in columns]
 
+    @staticmethod
     def get_type(value):
         # Try to parse as int, float, boolean, then date
         # Fallback to text
