@@ -78,7 +78,6 @@ class Parser:
         Advances the cursor to the index after this token phrase.
 
         TODO:
-            * Handle keywords such as 'DISTINCT'
             * Handle renaming columns
 
         @returns the index of the token after this token phrase
@@ -223,13 +222,25 @@ class Parser:
         self.check_index(stmt, idx)
 
         # Puts the conditional joins conditions into the list of overall conditions.
-        # TODO enforce that these conditions are all equality conditions
         idx, conds = self.consume_condition(stmt, idx)
         self.join_conds = conds
 
+        # Enforce that these conditions are all equality conditions
+        self.validate_join_conditions(stmt, self.join_conds)
+
         return idx
 
+    def validate_join_conditions(self, stmt, conds):
+        if (conds == []):
+            return
 
+        for item in conds:
+            if type(item) is list:
+                self.validate_join_conditions(item)
+            else:
+                assert type(item) is Comparison
+                if (item.operator != '='):
+                    raise SQLParsingError(sqlparse.format(stmt.value, keyword_case='upper'), "JOIN conditions must be equality comparisons!")
 
 
     def consume_from(self, stmt, idx):
@@ -337,9 +348,6 @@ class Parser:
         Advances the cursor to the index after this token phrase.
 
         Any included parentheses will not be processed and will result in an error.
-
-        TODO:
-            * Handle complex (Parentheses) boolean logic
 
         @returns the index of the token after this token phrase
         """
