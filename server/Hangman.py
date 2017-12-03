@@ -26,9 +26,10 @@ class Hangman:
             # Parse the query
             parser = Parser(query)
             parsed_query = parser.parse_select_from_where()
+            is_distinct = parsed_query[3] # grab the DISTINCT flag
 
             # Optimize a plan for the query facade
-            optimizer = QueryOptimizer(parsed_query)
+            optimizer = QueryOptimizer(parsed_query[0:2]) # Pass in all but the DISTINCT flag
             execution_plan = optimizer.get_plan()
 
             # Execute the plan through the facade
@@ -37,7 +38,7 @@ class Hangman:
 
             # Aggregate the results
             projector = TableProjector(optimizer.tables, optimizer.projection_columns)
-            query_output = projector.aggregate(results)
+            query_output = projector.aggregate(results, is_distinct)
             return query_output
         except SQLParsingError as e:
             return e.message
