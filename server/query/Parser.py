@@ -153,6 +153,7 @@ class Parser:
         while(idx < len(stmt.tokens)):
             if (stmt.tokens[idx].match(sqlparse.tokens.Keyword, keyword)):
                 return True
+            idx += 1
         return False
 
     def consume_join(self, stmt, idx):
