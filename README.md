@@ -35,8 +35,8 @@ More info on how to use the client to come (including help statements and exampl
 
 ### (Current) Query Structure Ground Rules:
 * Any quotes should be double quotes (""), not single quotes ('')
-* Parenthesis are not currently handled
 * All filepaths should be in quotations: i.e. "./movies.csv"
+* If conditionally joining tables, the conditions must be in parentheses: i.e. ON (<conditions>)
 
 ## Server Database System
 

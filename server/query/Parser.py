@@ -32,9 +32,10 @@ class Parser:
 
         self.query_string = query_string
         self.statements = sqlparse.parse(query_string)
-        self.cols  = []     # Set of selected column names
-        self.tbls  = []     # Set of selected table names. Returned as a list of Table objects
-        self.conds = []     # Set of conditions.  Format to be changed.
+        self.cols  = []         # Set of selected column names
+        self.tbls  = []         # Set of selected table names. Returned as a list of Table objects
+        self.conds = []         # Set of conditions.  Format to be changed.
+        self.join_conds = None  # Set of Join conditions, if they are there.
 
 
     @staticmethod
@@ -190,7 +191,12 @@ class Parser:
 
 
     def consume_on(self, stmt, idx, has_joined):
+        """
+        Consumes an ON phrase in the form of ON (<conditions>)
+        Advances the cursor to the index after this token phrase.
 
+        NOTE: Puts the conditions into self.conds, to be ANDed to later conditions.
+        """
         # Eliminate whitespace before potential ON keyword
         idx = self.consume_whitespace(stmt, idx)
 
@@ -208,9 +214,12 @@ class Parser:
         idx = self.consume_whitespace(stmt, idx)
         self.check_index(stmt, idx)
 
-        # TODO: handle condition here
+        # Puts the conditional joins conditions into the list of overall conditions.
+        # TODO enforce that these conditions are all equality conditions
+        idx, conds = self.consume_condition(stmt, idx)
+        self.join_conds = conds
 
-        return idx + 1 # TODO check with above insertion
+        return idx
 
 
 
@@ -337,6 +346,7 @@ class Parser:
 
         idx, conds = self.consume_multiple_conditions(stmt, idx)
         self.conds = conds
+
         return idx + 1
 
     def consume_multiple_conditions(self, stmt, idx):
@@ -463,12 +473,15 @@ class Parser:
             idx = self.consume_from(stmt, idx)
 
             if (idx < len(stmt.tokens)):
-                idx = self.consume_where(stmt, idx)
+                self.consume_where(stmt, idx)
+                if (self.join_conds is not None):
+                    self.conds[0].insert(0, self.join_conds)
             else:
                 self.conds = []
+                if (self.join_conds is not None):
+                    self.conds = self.join_conds
 
             return self.cols, self.tbls, self.conds
-            # return QueryFacade.query(self.cols, self.tbls, self.conds)
 
     def check_index(self, stmt, idx):
         """
