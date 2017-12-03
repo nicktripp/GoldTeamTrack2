@@ -111,3 +111,5 @@ data
 tmp
 !/data/database.csv
 !/data/movies.csv
+!/server/query/test/data/
+!/server/query/test/data/movies.csv
