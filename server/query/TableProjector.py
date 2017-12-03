@@ -16,7 +16,7 @@ class TableProjector:
         for table in self._tables:
             for col in self._projection_columns:
                 if col.table == table:
-                    self._columns_for_table[table].append(table.column_index[col.name])
+                    self._columns_for_table[repr(table)].append(table.column_index[col.name])
         pass
 
     def aggregate(self, row_start_tuples, distinct):
@@ -42,7 +42,7 @@ class TableProjector:
         output = []
         for i in range(tables_to_read):
             # Get the indices of all of the projection columns for this table
-            cols = self._columns_for_table[self._tables[i]]
+            cols = self._columns_for_table[repr(self._tables[i])]
             with open(self._tables[i].name, 'r') as f:
                 # Iterate over every row tuple for this table
                 for m, tup in enumerate(row_start_tuples):

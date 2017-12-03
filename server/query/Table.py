@@ -16,7 +16,10 @@ class Table:
             self._column_index = {col: i for i, col in enumerate(columns)}
 
     def __repr__(self):
-        return "Table " + self.name
+        if self._nickname is None:
+            return "Table " + self._name
+        else:
+            return "Table %s %s" % (self._name, self._nickname)
 
     def __eq__(self, other):
         if isinstance(other, Table):

@@ -18,7 +18,7 @@ class QueryPlan:
 
     def __init__(self):
         # The conditions that will be executed in this plan
-        self._conditions = []
+        self._comparisons = []
 
         # The way that conditions are related (AND, OR)
         self._conjunctions = []

@@ -1,11 +1,7 @@
-from server.indexing.FileIndexer import FileIndexer
-from server.query.QueryFacade import QueryFacade
-from server.query.Parser import Parser
+from server.Hangman import Hangman
 
 if __name__ == "__main__":
-    relative_path = '../../../'
-    csv_table = 'movies'
-    FileIndexer(relative_path, csv_table, True)
-    # parser = Parser('SELECT movies.movie_title FROM movies WHERE movies.movie_title = "Spider-Man 3"')
-    # stmt = parser.parse_select_from_where()
-    # print(stmt)
+    query = "SELECT S.a FROM small S"
+    out = Hangman.execute(query)
+    print(out)
+    assert out == ['1', '5', '9']

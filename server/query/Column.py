@@ -13,6 +13,12 @@ class Column:
             return self.table == other.table and self.name == other.name
         return False
 
+    def __repr__(self):
+        if self._table.nickname is None:
+            return self._table.name + "." + self._name
+        else:
+            return self._table.nickname + "." + self._name
+
     @property
     def name(self):
         return self._name
