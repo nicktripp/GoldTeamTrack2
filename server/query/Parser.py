@@ -237,7 +237,7 @@ class Parser:
 
         for item in conds:
             if type(item) is list:
-                self.validate_join_conditions(item)
+                self.validate_join_conditions(stmt, item)
             else:
                 assert type(item) is Comparison
                 if (item.operator != '='):

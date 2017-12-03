@@ -1,6 +1,7 @@
 from server.query.Column import Column
 from server.query.Parser import Parser
 from server.query.Table import Table
+from server.query.SQLParsingError import SQLParsingError
 
 if __name__ == "__main__":
     query = "SELECT * FROM movies"
@@ -75,5 +76,34 @@ if __name__ == "__main__":
     assert str(conds[0][0][0][1][0][0]) == 'release_year < 2010'
     assert str(conds[0][0][0][1][1][0]) == 'release_year = 2011'
 
+    query = 'SELECT DISTINCT M1.movie_title, M2.movie_title FROM movies M1 JOIN movies M2 ON (M1.title = M2.title AND M1.score = M2.score) WHERE M1.title > M2.title'
+    p = Parser(query)
+    cols, tbls, conds, f_dist = p.parse_select_from_where()
+    assert f_dist is True
+    assert cols == [Column(Table('movies', 'M1'), 'movie_title'), Column(Table('movies', 'M2'), 'movie_title')]
+    assert tbls == [Table('movies', 'M1'), Table('movies', 'M2')]
+    assert str(conds[0][0][0][0]) == "M1.title = M2.title"
+    assert str(conds[0][0][0][1]) == "M1.score = M2.score"
+    assert str(conds[0][1]) == "M1.title > M2.title"
 
+    query = 'SELECT  M1.movie_title FROM movies M1 JOIN movies M2 JOIN movies M3 ON (M1.title = M2.title AND M1.score = M3.score)'
+    p = Parser(query)
+    cols, tbls, conds, f_dist = p.parse_select_from_where()
+    assert f_dist is False
+    assert cols == [Column(Table('movies', 'M1'), 'movie_title')]
+    assert tbls == [Table('movies', 'M1'), Table('movies', 'M2'), Table('movies', 'M3')]
+    assert str(conds[0][0]) == "M1.title = M2.title"
+    assert str(conds[0][1]) == "M1.score = M3.score"
+
+    query = 'SELECT M.movie_title FROM movies M1 JOIN Movies M2 ON (M1.title > M2.title)'
+    threw_err = False
+    try:
+        p = Parser(query)
+        cols, tbls, conds, _ = p.parse_select_from_where()
+    except SQLParsingError as err:
+        assert err.message == "JOIN conditions must be equality comparisons!"
+        threw_err = True
+    assert threw_err is True
+
+    # TODO: The exact example queries given by the Prof
 
