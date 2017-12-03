@@ -18,11 +18,7 @@ class Parser:
         by processing it and then advancing the "cursor" as appropriate.
 
     TODO:
-        * Handle adv. keywords, like 'DISTINCT'
         * Handle renaming columns
-        * Handle joins
-        * Handle complex (Parentheses) boolean logic
-        * Further parse the conditions for ease of use.
         * Handle more than one statement at once, or throw an error
     """
 
@@ -33,10 +29,11 @@ class Parser:
 
         self.query_string = query_string
         self.statements = sqlparse.parse(query_string)
-        self.cols  = []         # Set of selected column names
-        self.tbls  = []         # Set of selected table names. Returned as a list of Table objects
-        self.conds = []         # Set of conditions.  Format to be changed.
-        self.join_conds = None  # Set of Join conditions, if they are there.
+        self.cols  = []             # Set of selected column names
+        self.tbls  = []             # Set of selected table names. Returned as a list of Table objects
+        self.conds = []             # Set of conditions.  Format to be changed.
+        self.join_conds = None      # Set of Join conditions, if they are there.
+        self.is_distinct = False    # Boolean describing if the keyword DISTINCT is used.
 
 
     @staticmethod
@@ -102,6 +99,16 @@ class Parser:
         # Eliminate whitespace trailing after SELECT
         idx = self.consume_whitespace(stmt, idx)
         self.check_index(stmt, idx)
+
+        # Check to see if DISTINCT is present.
+        if(self.is_keyword_remaining(stmt,idx,"DISTINCT")):
+            if (not stmt.tokens[idx].match(sqlparse.tokens.Keyword, "DISTINCT")):
+                raise SQLParsingError(sqlparse.format(stmt.value, keyword_case='upper'), "Unrecognized SELECT DISTINCT format")
+            self.is_distinct = True
+            idx += 1 # Advance cursor
+            # Eliminate whitespace trailing after DISTINCT
+            idx = self.consume_whitespace(stmt, idx)
+            self.check_index(stmt, idx)
 
         # Next Token is our set of selected cols
         if (not self.validate_identifier(stmt, idx)):
@@ -486,7 +493,7 @@ class Parser:
             # Convert columns from strings to Column instances
             self.convert_columns(stmt)
 
-            return self.cols, self.tbls, self.conds
+            return self.cols, self.tbls, self.conds, self.is_distinct
 
     def convert_columns(self, stmt):
         # Create dictionary to lookup tables for columns in select

@@ -5,21 +5,23 @@ from server.query.Table import Table
 if __name__ == "__main__":
     query = "SELECT * FROM movies"
     p = Parser(query)
-    cols, tbls, conds = p.parse_select_from_where()
+    cols, tbls, conds, f_dist = p.parse_select_from_where()
     assert cols == ['*']
     assert tbls == [Table('movies')]
     assert conds == []
+    assert f_dist is False
 
-    query = "SELECT * FROM movies M1, movies M2"
+    query = "SELECT DISTINCT * FROM movies M1, movies M2"
     p = Parser(query)
-    cols, tbls, conds = p.parse_select_from_where()
+    cols, tbls, conds, f_dist = p.parse_select_from_where()
     assert cols == ['*']
     assert tbls == [Table('movies', 'M1'), Table('movies', 'M2')]
     assert conds == []
+    assert f_dist is True
 
     query = 'SELECT movie_title FROM movies WHERE movie_title = "Spider-Man 3"'
     p = Parser(query)
-    cols, tbls, conds = p.parse_select_from_where()
+    cols, tbls, conds, _ = p.parse_select_from_where()
     assert cols == [Column(Table('movies'),'movie_title')]
     assert tbls == [Table('movies')]
     assert str(conds[0][0]) == 'movie_title = "Spider-Man 3"'
@@ -40,7 +42,7 @@ if __name__ == "__main__":
 
     query = 'SELECT movie_title FROM movies WHERE movie_title = "Spider-Man 3" AND release_year < 2010'
     p = Parser(query)
-    cols, tbls, conds = p.parse_select_from_where()
+    cols, tbls, conds, _ = p.parse_select_from_where()
     assert cols == [Column(Table('movies'),'movie_title')]
     assert tbls == [Table('movies')]
     assert str(conds[0][0]) == 'movie_title = "Spider-Man 3"'
@@ -48,7 +50,7 @@ if __name__ == "__main__":
 
     query = 'SELECT movie_title FROM movies WHERE movie_title = "Spider-Man 3" AND release_year < 2010 OR release_year = 2011'
     p = Parser(query)
-    cols, tbls, conds = p.parse_select_from_where()
+    cols, tbls, conds, _ = p.parse_select_from_where()
     assert cols == [Column(Table('movies'),'movie_title')]
     assert tbls == [Table('movies')]
     assert str(conds[0][0]) == 'movie_title = "Spider-Man 3"'
@@ -57,7 +59,7 @@ if __name__ == "__main__":
 
     query = 'SELECT movie_title FROM movies WHERE movie_title = "Spider-Man 3" AND (release_year < 2010 OR release_year = 2011)'
     p = Parser(query)
-    cols, tbls, conds = p.parse_select_from_where()
+    cols, tbls, conds, _ = p.parse_select_from_where()
     assert cols == [Column(Table('movies'),'movie_title')]
     assert tbls == [Table('movies')]
     assert str(conds[0][0]) == 'movie_title = "Spider-Man 3"'
@@ -66,7 +68,7 @@ if __name__ == "__main__":
 
     query = 'SELECT movie_title FROM movies WHERE (movie_title = "Spider-Man 3" AND (release_year < 2010 OR release_year = 2011))'
     p = Parser(query)
-    cols, tbls, conds = p.parse_select_from_where()
+    cols, tbls, conds, _ = p.parse_select_from_where()
     assert cols == [Column(Table('movies'),'movie_title')]
     assert tbls == [Table('movies')]
     assert str(conds[0][0][0][0]) == 'movie_title = "Spider-Man 3"'
