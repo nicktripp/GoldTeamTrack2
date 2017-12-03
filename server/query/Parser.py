@@ -1,9 +1,10 @@
 import sqlparse
 
-from server.query.Comparison import Comparison
 from server.query.SQLParsingError import SQLParsingError
+from server.query.Join import *
+from server.query.Table import Table
 
-LOG = True
+LOG = False
 
 class Parser:
     """
@@ -30,15 +31,9 @@ class Parser:
         self.query_string = query_string
         self.statements = sqlparse.parse(query_string)
         self.cols  = []     # Set of selected column names
-        self.tbls  = []     # Set of selected table names.  Format is a 2D list,  [[],[]] where each sublist is CROSSED and each sublist is JOINED together
-        self.conds = []     # Set of conditions.  Format is a list of lists of conditions.
-                            # TODO: IMPLEMENT THIS\/\/
-                            #   Each sublist is a set of conditions joined by ANDS, and each sublist is joined by an OR.
-                            #   [
-                            #       [ <SomeCondition>, <ANDAnotherCondition> ] (Conditions AND)
-                            #       [ <ORAnotherConditionSet> ]
-                            #   ]
-                            # TODO: IMPLEMENT THIS^^
+        self.tbls  = []     # Set of selected table names. Returned as a list of Table objects
+        self.conds = []     # Set of conditions.  Format to be changed.
+
 
     @staticmethod
     def validate(stmt):
@@ -141,18 +136,92 @@ class Parser:
 
         return l
 
+    def str_to_Table(self, tbl_str):
+        tbl_list = tbl_str.split(" ")
+
+        if(len(tbl_list) != 1 or len(tbl_list) != 2):
+            raise ValueError("Unrecognized string-to-Table format")
+
+        return Table(*tbl_list)
+
+    def is_keyword_remaining(self, stmt, idx, keyword):
+        """
+        Checks the query after the specified index to see if there is a KEYWORD statement remaining.
+        """
+        while(idx < len(stmt.tokens)):
+            if (stmt.tokens[idx].match(sqlparse.tokens.Keyword, keyword)):
+                return True
+        return False
+
+    def consume_join(self, stmt, idx):
+        """
+        Consumes a JOIN phrase in the form of JOIN [tables]
+        Advances the cursor to the index after this token phrase.
+
+        :return: the index of the token after this token phrase.
+        """
+        # Eliminate whitespace before potential JOIN
+        idx = self.consume_whitespace(stmt, idx)
+        self.check_index(stmt, idx)
+
+        # Check if JOIN is next token
+        if (not stmt.tokens[idx].match(sqlparse.tokens.Keyword, "JOIN")):
+            raise SQLParsingError(stmt.tokens[idx].value, "Expected 'JOIN' keyword")
+
+        idx += 1  # Advance cursor
+
+        self.check_index(stmt, idx)
+
+        # Eliminate whitespace trailing after JOIN, before right-hand table
+        idx = self.consume_whitespace(stmt, idx)
+        self.check_index(stmt, idx)
+
+        # Next Token is our right-hand set of selected tables
+        if (not self.validate_identifier(stmt, idx)):
+            raise SQLParsingError(stmt.tokens[idx].value, "Invalid Identifier")
+
+        tbls = self.token_to_list(stmt.tokens[idx])
+        for tbl in tbls:
+            self.tbls.append(self.str_to_Table(tbl))
+
+        return idx + 1
+
+
+    def consume_on(self, stmt, idx, has_joined):
+
+        # Eliminate whitespace before potential ON keyword
+        idx = self.consume_whitespace(stmt, idx)
+
+        # Check if ON is next token
+        if (not stmt.tokens[idx].match(sqlparse.tokens.Keyword, "ON")):
+            raise SQLParsingError(stmt.tokens[idx].value, "Expected 'ON' keyword")
+
+        if(not has_joined):
+            raise SQLParsingError(stmt.tokens[idx].value, "Unexpected 'ON' keyword")
+
+        idx += 1 # advance cursor
+        self.check_index(stmt, idx)
+
+        # Eliminate whitespace trailing after ON
+        idx = self.consume_whitespace(stmt, idx)
+        self.check_index(stmt, idx)
+
+        # TODO: handle condition here
+
+        return idx + 1 # TODO check with above insertion
+
+
+
+
     def consume_from(self, stmt, idx):
         """
         Consumes a token phrase in the form of FROM [tables].
 
-        Stores the tables specified in the self.tbls list.
+        Stores the tables specified in self.tbls as a list of Tables
         Advances the cursor to the index after this token phrase.
         Renaming tables is supported:
             Consuming 'FROM movies M, oscars O' stores ['movies M','oscars O']
             in self.tbls
-
-        TODO:
-            * Handle joins
 
         @returns the index of the token after this token phrase
         """
@@ -179,10 +248,41 @@ class Parser:
         if (not self.validate_identifier(stmt, idx)):
             raise SQLParsingError( stmt.tokens[idx].value, "Invalid Identifier")
 
+        tbls = self.token_to_list(stmt.tokens[idx])
+        for tbl in tbls:
+            self.tbls.append(self.str_to_Table(tbl))
 
-        self.tbls = self.token_to_list(stmt.tokens[idx])
+        idx += 1
 
-        return idx+1
+        # If nothing more to process, graceful exit
+        if (idx >= len(stmt.tokens)):
+            return idx
+
+        # Process all JOIN statements
+        has_join = False
+        while(self.is_keyword_remaining(stmt, idx, "JOIN")):
+            has_join = True
+            idx = self.consume_join(stmt, idx)
+
+        # If nothing more to process, graceful exit
+        if (idx >= len(stmt.tokens)):
+            return idx
+
+        # Process potential ON statement:
+        if(self.is_keyword_remaining(stmt, idx, "ON")):
+            idx = self.consume_on(stmt, idx, has_join)
+
+        return idx
+
+    def list_to_Join(self, table_list):
+        if table_list == []:
+            raise ValueError("List must have at least one element.")
+        elif len(table_list) == 1:
+            return SingletonJoin(table_list[0])
+        else:
+            return Join(SingletonJoin(table_list[0]), JoinType.CROSS, self.list_to_Join(self, table_list[1:]))
+
+
 
     def consume_where(self, stmt, idx):
         """

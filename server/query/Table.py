@@ -2,8 +2,9 @@ import os
 
 
 class Table:
-    def __init__(self, name):
+    def __init__(self, name, nickname=None):
         self._name = name
+        self._nickname = nickname
         assert os.path.exists(self._name), "The table must exist."
 
         # Fill the column index
@@ -18,3 +19,7 @@ class Table:
     @property
     def column_index(self):
         return self._column_index
+
+    @property
+    def nickname(self):
+        return self._nickname
