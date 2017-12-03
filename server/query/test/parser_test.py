@@ -105,5 +105,41 @@ if __name__ == "__main__":
         threw_err = True
     assert threw_err is True
 
-    # TODO: The exact example queries given by the Prof
+    # The exact example queries given by the Prof
 
+    #SELECT R.review_id, R.stars, R.useful FROM review-1m.csv R WHERE R.stars >= 4 AND R.useful > 20
+    query = "SELECT R.review_id, R.stars, R.useful FROM review-1m R WHERE R.stars >= 4 AND R.useful > 20"
+    p = Parser(query)
+    cols, tbls, conds, DISTINCT = p.parse_select_from_where()
+    assert DISTINCT is False
+    assert cols == [Column(Table('review-1m', 'R'), 'review_id'), Column(Table('review-1m', 'R'), 'stars'), Column(Table('review-1m', 'R'), 'useful')]
+    assert tbls == [Table('review-1m', 'R')]
+    assert str(conds[0][0]) == 'R.stars >= 4'
+    assert str(conds[0][1]) == 'R.useful > 20'
+
+    #SELECT B.name, B.postal_code, R.review_id, R.stars, R.useful FROM business.csv B JOIN review-1m.csv R ON (B.business_id = R.business_id) WHERE B.city = 'Champaign' AND B.state = 'IL'
+    query = 'SELECT B.name, B.postal_code, R.review_id, R.stars, R.useful FROM business B JOIN review-1m R ON (B.business_id = R.business_id) WHERE B.city = "Champaign" AND B.state = "IL"'
+    p = Parser(query)
+    cols, tbls, conds, DISTINCT = p.parse_select_from_where()
+    assert DISTINCT is False
+    assert cols == [Column(Table('business', 'B'), 'name'), Column(Table('business', 'B'), 'postal_code'),
+                    Column(Table('review-1m', 'R'), 'review_id'), Column(Table('review-1m', 'R'), 'stars'),
+                    Column(Table('review-1m', 'R'), 'useful')]
+    assert tbls == [Table('business', 'B'), Table('review-1m', 'R')]
+    assert str(conds[0][0][0][0]) == "B.business_id = R.business_id"
+    assert str(conds[0][1]) == 'B.city = "Champaign"'
+    assert str(conds[0][2]) == 'B.state = "IL"'
+
+    #SELECT DISTINCT B.name FROM business.csv B JOIN review-1m.csv R JOIN photos.csv P ON (B.business_id = R.business_id AND B.business_id = P.business_id) WHERE B.city = 'Champaign' AND B.state = 'IL' AND R.stars = 5 AND P.label = 'inside'
+    query = 'SELECT DISTINCT B.name FROM business B JOIN review-1m R JOIN photos P ON (B.business_id = R.business_id AND B.business_id = P.business_id) WHERE B.city = "Champaign" AND B.state = "IL" AND R.stars = 5 AND P.label = "inside"'
+    p = Parser(query)
+    cols, tbls, conds, DISTINCT = p.parse_select_from_where()
+    assert DISTINCT is True
+    assert cols == [Column(Table('business', 'B'), 'name')]
+    assert tbls == [Table('business', 'B'), Table('review-1m', 'R'), Table('photos', 'P')]
+    assert str(conds[0][0][0][0]) == 'B.business_id = R.business_id'
+    assert str(conds[0][0][0][1]) == 'B.business_id = P.business_id'
+    assert str(conds[0][1]) == 'B.city = "Champaign"'
+    assert str(conds[0][2]) == 'B.state = "IL"'
+    assert str(conds[0][3]) == 'R.stars = 5'
+    assert str(conds[0][4]) == 'P.label = "inside"'

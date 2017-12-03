@@ -8,7 +8,7 @@ class Table:
     def __init__(self, name, nickname=None):
         self._name = name
         self._nickname = nickname
-        assert os.path.exists(self.filename), "The table must exist."
+        assert os.path.exists(self.filename), "The table (%s) must exist." % self._name
 
         # Fill the column index
         with open(self.filename, 'r') as f:
