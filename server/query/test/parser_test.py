@@ -7,16 +7,16 @@ if __name__ == "__main__":
     query = "SELECT * FROM movies"
     p = Parser(query)
     cols, tbls, conds, f_dist = p.parse_select_from_where()
-    assert cols == ['*']
+    assert cols == [Column(Table('movies'),'*')]
     assert tbls == [Table('movies')]
     assert conds == []
     assert f_dist is False
 
-    query = "SELECT DISTINCT * FROM movies M1, movies M2"
+    query = "SELECT DISTINCT * FROM movies M1"
     p = Parser(query)
     cols, tbls, conds, f_dist = p.parse_select_from_where()
-    assert cols == ['*']
-    assert tbls == [Table('movies', 'M1'), Table('movies', 'M2')]
+    assert cols == [Column(Table('movies', 'M1'),'*')]
+    assert tbls == [Table('movies', 'M1')]
     assert conds == []
     assert f_dist is True
 
