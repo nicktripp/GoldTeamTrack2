@@ -141,7 +141,7 @@ class Parser:
     def str_to_Table(self, tbl_str):
         tbl_list = tbl_str.split(" ")
 
-        if(len(tbl_list) != 1 or len(tbl_list) != 2):
+        if(len(tbl_list) != 1 and len(tbl_list) != 2):
             raise ValueError("Unrecognized string-to-Table format")
 
         return Table(*tbl_list)
