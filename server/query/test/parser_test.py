@@ -28,7 +28,6 @@ if __name__ == "__main__":
     p = Parser(query)
     cols, tbls, conds = p.parse_select_from_where()
     assert cols == [Column(Table('movies', 'M1'), 'movie_title')]
-    assert cols == ['M1.movie_title']
     assert tbls == [Table('movies', 'M1')]
     assert str(conds[0][0]) == 'M1.movie_title = "Spider-Man 3"'
 
