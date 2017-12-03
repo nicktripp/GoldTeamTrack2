@@ -34,3 +34,17 @@ class Comparison:
     @property
     def operator(self):
         return self._operator
+
+
+class LikeComparison(Comparison):
+    def __init__(self, column, pattern):
+        self._column = column
+        self._pattern = pattern
+
+    @property
+    def column(self):
+        return self._column
+
+    @property
+    def pattern(self):
+        return self._pattern
