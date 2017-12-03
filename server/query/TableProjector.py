@@ -13,10 +13,11 @@ class TableProjector:
 
         # Fill map of table to projection columns index in row of table
         self._columns_for_table = defaultdict(list)
-        for table in self._tables:
-            for col in self._projection_columns:
-                if col.table == table:
-                    self._columns_for_table[repr(table)].append(table.column_index[col.name])
+        for col in self._projection_columns:
+            if col.name == '*':
+                self._columns_for_table[repr(col.table)].extend(col.table.column_index.values())
+            else:
+                self._columns_for_table[repr(col.table)].append(col.table.column_index[col.name])
 
     def aggregate(self, row_tup_generator, distinct):
         """

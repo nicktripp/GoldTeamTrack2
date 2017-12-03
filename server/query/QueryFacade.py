@@ -1,6 +1,7 @@
 import os
 
 from server.indexing.TableIndexer import TableIndexer
+from server.query.Column import Column
 from server.query.Table import Table
 
 
@@ -60,8 +61,12 @@ class QueryFacade:
                         col = c
                         break
 
-                # Get the index for the column
-                col_idx = self.index_for_column(col)
+                # Get the index for a single column
+                if col.name == '*':
+                    col_name = list(col.table.column_index.keys())[0]
+                    col_idx = self.index_for_column(Column(col.table, col_name))
+                else:
+                    col_idx = self.index_for_column(col)
 
                 # Collect all of the row start locations for each unique value of the column
                 rows = []

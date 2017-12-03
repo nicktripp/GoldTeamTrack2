@@ -516,7 +516,13 @@ class Parser:
         for i in range(len(self.cols)):
             col_str = self.cols[i]
             if col_str == '*':
+                if len(self.tbls) == 1:
+                    self.cols[i] = Column(self.tbls[0], col_str)
+                else:
+                    raise SQLParsingError(sqlparse.format(stmt.value, keyword_case='upper'), "Ambiguous use of the * "
+                                                                                             "selector.")
                 continue
+
             table_column = col_str.split('.')
             if len(table_column) < 2:
                 if requires_prefix:
