@@ -17,26 +17,65 @@ class TableProjector:
             for col in self._projection_columns:
                 if col.table == table:
                     self._columns_for_table[repr(table)].append(table.column_index[col.name])
-        pass
 
-    def aggregate(self, row_start_tuples, distinct):
+    def aggregate(self, row_tup_generator, distinct):
         """
         The results that are supplied are the results of executing the plan on the query facade
         :param row_start_tuples: list of tuples of row locations in csv files
         :param distinct flag for the DISTINCT keyword
         :return: query_output
         """
-        if len(row_start_tuples) == 0:
-            return "\n"
+        # Open the CSV tables
+        table_files = []
+        for i in range(len(self._tables)):
+            table_files.append(open(self._tables[i].filename, 'r'))
 
-        # Assert the row_tuples have the correct shape
-        tables_to_read = len(row_start_tuples[0])
-        assert all(len(row_tup) == tables_to_read for row_tup in row_start_tuples), "Same number of tables must be " \
-                                                                                    "read for each row "
+        # Iterate through the tuples
+        table_projections = [{}] * len(self._tables)
+        tables_to_read = None
+        output = []
+        for tup in row_tup_generator:
+            # Assert that they all read from the same number of tables
+            if tables_to_read is None:
+                tables_to_read = len(tup)
+            else:
+                assert len(tup) == tables_to_read, "All tuples must be of the same length for the TableProjector"
 
-        # Distinct output should not have duplicate rows, so don't waste time reading them
+            # Project the row for each table if it hasn't been done yet
+            row = []
+            for i in range(len(self._tables)):
+                cols = self._columns_for_table[repr(self._tables[i])]
+                loc = tup[i]
+                if loc not in table_projections[i]:
+                    # Read the row and project
+                    table_files[i].seek(loc)
+                    row_str = table_files[i].readline()[:-1]
+                    col_vals = row_str.split(',')
+                    projection = ','.join(col_vals[i] for i in cols)
+                    row.append(projection)
+
+                    # Save for later
+                    table_projections[i][loc] = projection
+                else:
+                    # Look up projection
+                    row.append(table_projections[i][loc])
+
+            # Concatenate and append to the query result
+            output.append(','.join(row))
+
+        # Close the csv files
+        for file in table_files:
+            file.close()
+
+        # Remove duplicate entries if DISTINCT keyword is used
         if distinct:
-            row_start_tuples = list(set(row_start_tuples))
+            output = list(set(output))
+
+        return output
+
+
+
+
 
         # Load each row for a table and project it to the desired column
         output = []

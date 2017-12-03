@@ -1,5 +1,6 @@
 import os
 
+from server.indexing.TableIndexer import TableIndexer
 from server.query.Table import Table
 
 
@@ -14,10 +15,9 @@ class QueryFacade:
         :param tables:
         """
         self._tables = tables
-
-        if not QueryFacade.is_query_indexed(self._tables):
-            # TODO: Index the tables
-            pass
+        self._table_indices = {}
+        for tbl in self._tables:
+            self._table_indices[repr(tbl)] = TableIndexer(tbl)
 
     @staticmethod
     def is_query_indexed(tbls):
@@ -61,7 +61,7 @@ class QueryFacade:
                         break
 
                 # Get the index for the column
-                col_idx = QueryFacade.index_for_column(col)
+                col_idx = self.index_for_column(col)
 
                 # Collect all of the row start locations for each unique value of the column
                 rows = []
@@ -69,7 +69,8 @@ class QueryFacade:
                     if isinstance(vs, list) or isinstance(vs, set):
                         for v in vs:
                             rows.append(v)
-                    assert False, "Index should have value keys and list or set values"
+                    else:
+                        assert False, "Index should have value keys and list or set values"
 
                 # Keep rows to make cartesian product
                 tbl_rows.append(rows)
@@ -83,9 +84,9 @@ class QueryFacade:
 
         return []
 
-    @staticmethod
-    def index_for_column(col):
-        pass
+    def index_for_column(self, col):
+        tbl = col.table
+        return self._table_indices[repr(tbl)].column_indices[col.name]
 
     @staticmethod
     def cartesian_generator(tbl_rows):
@@ -105,10 +106,10 @@ class QueryFacade:
                 row_list.append(tbl_rows[i][idx[i]])
 
             # move the index of the cartesian tuple
-            for i in reversed(range(1, len(tbl_rows))):
+            for i in reversed(range(len(tbl_rows))):
                 idx[i] += 1
                 # wrap the index except for the very first list in tbl_rows
-                if idx == len(tbl_rows[i]):
+                if idx == len(tbl_rows[i]) and i != 0:
                     idx[i] = 0
 
             yield tuple(row_list)
