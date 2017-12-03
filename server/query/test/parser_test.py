@@ -28,15 +28,14 @@ if __name__ == "__main__":
 
     query = 'SELECT M1.movie_title FROM movies M1 WHERE M1.movie_title = "Spider-Man 3"'
     p = Parser(query)
-    cols, tbls, conds = p.parse_select_from_where()
+    cols, tbls, conds, _ = p.parse_select_from_where()
     assert cols == [Column(Table('movies', 'M1'), 'movie_title')]
-    assert cols == ['M1.movie_title']
     assert tbls == [Table('movies', 'M1')]
     assert str(conds[0][0]) == 'M1.movie_title = "Spider-Man 3"'
 
     query = 'SELECT M1.movie_title, M2.movie_title FROM movies M1, movies M2 WHERE M1.movie_title = "Spider-Man 3"'
     p = Parser(query)
-    cols, tbls, conds = p.parse_select_from_where()
+    cols, tbls, conds, _ = p.parse_select_from_where()
     assert cols == [Column(Table('movies', 'M1'), 'movie_title'), Column(Table('movies', 'M2'), 'movie_title')]
     assert tbls == [Table('movies', 'M1'), Table('movies', 'M2')]
     assert str(conds[0][0]) == 'M1.movie_title = "Spider-Man 3"'

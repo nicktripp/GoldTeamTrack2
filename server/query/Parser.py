@@ -1,5 +1,6 @@
 import sqlparse
 
+from server.query.Column import Column
 from server.query.Comparison import Comparison, LikeComparison
 from server.query.SQLParsingError import SQLParsingError
 from server.query.Join import *
@@ -497,7 +498,35 @@ class Parser:
                 if (self.join_conds is not None):
                     self.conds = self.join_conds
 
+            # Convert columns from strings to Column instances
+            self.convert_columns(stmt)
+
             return self.cols, self.tbls, self.conds, self.is_distinct
+
+    def convert_columns(self, stmt):
+        # Create dictionary to lookup tables for columns in select
+        tbl_dict = {}
+        for tbl in self.tbls:
+            if tbl.nickname is not None:
+                tbl_dict[tbl.nickname] = tbl
+            else:
+                tbl_dict[tbl.name] = tbl
+        # Convert the column string values to Column instances
+        requires_prefix = len(self.tbls) == 1
+        for i in range(len(self.cols)):
+            col_str = self.cols[i]
+            if col_str == '*':
+                continue
+            table_column = col_str.split('.')
+            if len(table_column) < 2:
+                if requires_prefix:
+                    self.cols[i] = Column(self.tbls[0], col_str)
+                else:
+                    raise SQLParsingError(sqlparse.format(stmt.value, keyword_case='upper'),
+                                          "Unexpected end of query")
+            else:
+                tbl, name = tbl_dict[table_column[0]], table_column[1]
+                self.cols[i] = Column(tbl, name)
 
     def check_index(self, stmt, idx):
         """
