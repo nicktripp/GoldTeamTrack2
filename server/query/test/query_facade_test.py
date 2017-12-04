@@ -68,6 +68,7 @@ if __name__ == "__main__":
                    '5,6,7,8,9,10,11,12']
 
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a = 1 OR (S1.a = 5 OR S1.a = 9)"
+    out = Hangman.execute(query)
     assert out == ['1,2,3,4,1,2,3,4',
                    '1,2,3,4,5,6,7,8',
                    '1,2,3,4,9,10,11,12',

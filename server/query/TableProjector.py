@@ -46,7 +46,7 @@ class TableProjector:
                 assert len(tup) == tables_to_read, "All tuples must be of the same length for the TableProjector"
 
             # Project the row for each table if it hasn't been done yet
-            row = []
+            rows = [[]]
             for i in range(len(self._tables)):
                 cols = self._columns_for_table[repr(self._tables[i])]
                 if not cols:
@@ -59,32 +59,38 @@ class TableProjector:
                         table_files[i].readline()
                         loc = table_files[i].tell()
                         size = os.path.getsize(self._tables[i].filename)
+                        new_rows = []
                         while loc < size:
                             # Read the row and project
                             table_files[i].seek(loc)
                             row_str = table_files[i].readline()[:-1]
                             col_vals = row_str.split(',')
                             projection = ','.join(col_vals[i] for i in cols)
-                            row.append(projection)
+                            for row in rows:
+                                new_rows.append(row + [projection])
 
                             # Update loc and repeat
                             loc = table_files[i].tell()
+                        rows = new_rows
                     else:
                         # Read the row and project
                         table_files[i].seek(loc)
                         row_str = table_files[i].readline()[:-1]
                         col_vals = row_str.split(',')
                         projection = ','.join(col_vals[i] for i in cols)
-                        row.append(projection)
+                        for row in rows:
+                            row.append(projection)
 
                         # Save for later
                         table_projections[i][loc] = projection
                 else:
                     # Look up projection
-                    row.append(table_projections[i][loc])
+                    for row in rows:
+                        row.append(table_projections[i][loc])
 
             # Concatenate and append to the query result
-            output.append(','.join(row))
+            for row in rows:
+                output.append(','.join(row))
 
         # Close the csv files
         for file in table_files:
