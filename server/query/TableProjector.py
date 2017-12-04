@@ -1,5 +1,7 @@
 from collections import defaultdict
 
+import os
+
 
 class TableProjector:
     """
@@ -7,6 +9,7 @@ class TableProjector:
 
     It can read the rows of the tables projected onto specific columns.
     """
+
     def __init__(self, tables, projection_columns):
         self._tables = tables
         self._projection_columns = projection_columns
@@ -50,15 +53,32 @@ class TableProjector:
                     continue
                 loc = tup[i]
                 if loc not in table_projections[i]:
-                    # Read the row and project
-                    table_files[i].seek(loc)
-                    row_str = table_files[i].readline()[:-1]
-                    col_vals = row_str.split(',')
-                    projection = ','.join(col_vals[i] for i in cols)
-                    row.append(projection)
+                    if loc == '*':
+                        # Read every row
+                        table_files[i].seek(0)
+                        table_files[i].readline()
+                        loc = table_files[i].tell()
+                        size = os.path.getsize(self._tables[i].filename)
+                        while loc < size:
+                            # Read the row and project
+                            table_files[i].seek(loc)
+                            row_str = table_files[i].readline()[:-1]
+                            col_vals = row_str.split(',')
+                            projection = ','.join(col_vals[i] for i in cols)
+                            row.append(projection)
 
-                    # Save for later
-                    table_projections[i][loc] = projection
+                            # Update loc and repeat
+                            loc = table_files[i].tell()
+                    else:
+                        # Read the row and project
+                        table_files[i].seek(loc)
+                        row_str = table_files[i].readline()[:-1]
+                        col_vals = row_str.split(',')
+                        projection = ','.join(col_vals[i] for i in cols)
+                        row.append(projection)
+
+                        # Save for later
+                        table_projections[i][loc] = projection
                 else:
                     # Look up projection
                     row.append(table_projections[i][loc])

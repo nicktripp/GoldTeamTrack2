@@ -114,10 +114,7 @@ class QueryFacade:
             acc_list.append(acc)
 
         # union (OR) the results of the conditions
-        result = set()
-        for s in acc_list:
-            result = result | s
-        return sorted(list(result))
+        return self._sorted_tuple_union(acc_list)
 
     def eval_comparison(self, comparison):
         """
@@ -142,6 +139,11 @@ class QueryFacade:
             reduced = set()
             table_index = self._tables.index(comparison.left_column(self._tables).table)
             for k, vs in result.items():
+                # if there were not any results found
+                if vs is None:
+                    continue
+
+                # generate tuples for each found tuple
                 for v in vs:
                     # These are tuples for projections with the location set for this column's table index
                     result_list = ['*'] * len(self._tables)
@@ -189,8 +191,25 @@ class QueryFacade:
                     intersection.add(tuple(t3))
         return intersection
 
+    def _sorted_tuple_union(self, tuples):
+        union = set()
 
+        # Find all of the columns that will be '*'
+        mask = [False] * len(self._tables)
+        for ts in tuples:
+            for t in ts:
+                for i, m in enumerate(mask):
+                    mask[i] = t == '*' or mask[i]
 
+        # Union the tuples replacing the * columns iteratively
+        for ts in tuples:
+            for t in ts:
+                nt = []
+                for i, ti in enumerate(t):
+                    nt.append('*' if mask[i] else ti)
+                union.add(tuple(nt))
+
+        return sorted(list(union))
 
     @staticmethod
     def cartesian_generator(tbl_rows):
