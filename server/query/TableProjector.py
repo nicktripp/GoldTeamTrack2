@@ -25,7 +25,7 @@ class TableProjector:
     def aggregate(self, row_tup_generator, distinct):
         """
         The results that are supplied are the results of executing the plan on the query facade
-        :param row_start_tuples: list of tuples of row locations in csv files
+        :param row_tup_generator: list or generator of tuples of row locations in csv files
         :param distinct flag for the DISTINCT keyword
         :return: query_output
         """
