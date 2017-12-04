@@ -16,3 +16,20 @@ if __name__ == "__main__":
     query = "SELECT * FROM small S"
     out = Hangman.execute(query)
     assert out == ['1,2,3,4', '5,6,7,8', '9,10,11,12']
+
+    query = "SELECT * FROM small S WHERE S.a > 1"
+    out = Hangman.execute(query)
+    assert out == ['5,6,7,8', '9,10,11,12']
+
+    query = "SELECT * FROM small S WHERE S.a > 1 AND S.b <> 10"
+    out = Hangman.execute(query)
+    assert out == ['5,6,7,8']
+
+    query = "SELECT S1.* FROM small S1, small S2 WHERE S1.a > 1 AND S2.a < 9"
+    out = Hangman.execute(query)
+    assert out == ['5,6,7,8', '5,6,7,8', '9,10,11,12', '9,10,11,12']
+
+    query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a > 1 AND S2.a < 9"
+    out = Hangman.execute(query)
+    assert out == ['5,6,7,8,1,2,3,4', '5,6,7,8,5,6,7,8', '9,10,11,12,1,2,3,4', '9,10,11,12,5,6,7,8']
+

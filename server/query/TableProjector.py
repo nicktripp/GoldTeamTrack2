@@ -46,6 +46,8 @@ class TableProjector:
             row = []
             for i in range(len(self._tables)):
                 cols = self._columns_for_table[repr(self._tables[i])]
+                if not cols:
+                    continue
                 loc = tup[i]
                 if loc not in table_projections[i]:
                     # Read the row and project
@@ -73,36 +75,3 @@ class TableProjector:
             output = list(set(output))
 
         return output
-
-
-
-
-
-        # Load each row for a table and project it to the desired column
-        output = []
-        for i in range(tables_to_read):
-            # Get the indices of all of the projection columns for this table
-            cols = self._columns_for_table[repr(self._tables[i])]
-            with open(self._tables[i].name, 'r') as f:
-                # Iterate over every row tuple for this table
-                for m, tup in enumerate(row_start_tuples):
-                    # Seek and Read the row
-                    start = tup[i]
-                    f.seek(start)
-                    row = f.readline()[:-1]
-
-                    # Project the row into the desired columns and append it to the output
-                    col_vals = row.split(',')
-                    projection = ','.join(col_vals[i] for i in cols)
-                    # Check if the output has begun collecting for this row yet (first pass)
-                    if m >= len(output): # first pass
-                        output.append([projection])
-                    else:                # second and on passes
-                        output[m].append(projection)
-
-        # Return a list of string rows, respect the DISTINCT keyword
-        rows = [','.join(row) for row in output]
-        if distinct:
-            return list(set(rows))
-        else:
-            return rows

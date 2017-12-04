@@ -1,9 +1,9 @@
-from server.data_structures.btree.btree import BTree
-import pickle
-import os
-import time
-import sys
 import re
+import sys
+
+from server.data_structures.btree.btree import BTree
+
+from server.indexing import TableIndexer
 
 sys.setrecursionlimit(10000)
 
@@ -24,6 +24,7 @@ class BTreeIndex:
                 k, v = next(pair_generator)
             except StopIteration:
                 assert False, "There are not enough unique values to index this row."
+            k = TableIndexer.TableIndexer.parse_value(k)
             if k in initial_pairs:
                 initial_pairs[k].add(v)
             else:
@@ -35,6 +36,7 @@ class BTreeIndex:
         # Insert the rest of the items in the generator
         try:
             for k, v in pair_generator:
+                k = TableIndexer.TableIndexer.parse_value(k)
                 lookup = index.btree[k]
                 if lookup:
                     lookup.add(v)
@@ -112,7 +114,7 @@ class BTreeIndex:
 
         # This is the only block that does a comparison
         for i in range(len(block.keys)):
-            if key >= stop_block.keys[i]:
+            if key <= stop_block.keys[i]:
                 break
             ret[block.keys[i]] = block.values[i]
         return ret
@@ -129,7 +131,7 @@ class BTreeIndex:
 
         # This is the only block that does a comparison
         for i in range(len(block.keys)):
-            if key > stop_block.keys[i]:
+            if key < stop_block.keys[i]:
                 break
             ret[block.keys[i]] = block.values[i]
         return ret
