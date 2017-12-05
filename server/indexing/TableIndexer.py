@@ -1,14 +1,14 @@
 import os
 import pickle
+from dateutil.parser import parse as date_parse
 
-from server.indexing.BTreeIndex import BTreeIndex
+from server.indexing import BTreeIndex
 
 
 class TableIndexer:
-
     relative_path = "./data/"
 
-    def __init__(self, table, index_class=BTreeIndex):
+    def __init__(self, table, index_class=BTreeIndex.BTreeIndex):
         self._table = table
         self._index_class = index_class
         self._column_indices = {}
@@ -60,3 +60,28 @@ class TableIndexer:
     @property
     def column_indices(self):
         return self._column_indices
+
+    @staticmethod
+    def parse_value(val):
+        try:
+            return int(val)
+        except ValueError:
+            pass
+
+        try:
+            return float(val)
+        except ValueError:
+            pass
+
+        try:
+            return bool(val)
+        except ValueError:
+            pass
+
+        try:
+            return date_parse(val)
+        except ValueError:
+            pass
+
+        # Treat the right as TEXT
+        return val

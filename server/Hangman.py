@@ -41,4 +41,3 @@ class Hangman:
         except SQLParsingError as e:
             return e.message
         # TODO: throw different errors and handle them
-
