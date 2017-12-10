@@ -47,11 +47,13 @@ class TableIndexer:
 
     def _value_location_generator(self, f, size, j):
         position = f.tell()
+        i = 0
         while position < size:
             col_loc = position
             col_val = f.readline().split(',')[j]
             position = f.tell()
-            yield col_val, col_loc
+            yield col_val, col_loc, i
+            i += 1
 
     @property
     def table(self):

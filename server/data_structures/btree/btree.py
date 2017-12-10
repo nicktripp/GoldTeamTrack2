@@ -30,6 +30,9 @@ class BTree:
     def __repr__(self):
         return str(self.root)
 
+    def __contains__(self, item):
+        return self.root[item] is not None
+
     def __getitem__(self, key):
         """
         Support key lookup with brackets

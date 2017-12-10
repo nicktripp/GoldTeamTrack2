@@ -21,7 +21,7 @@ class BTreeIndex:
         # Get 3 initial values
         while len(initial_pairs) < 3:
             try:
-                k, v = next(pair_generator)
+                k, v, _ = next(pair_generator)
             except StopIteration:
                 assert False, "There are not enough unique values to index this row."
             k = TableIndexer.TableIndexer.parse_value(k)
@@ -35,7 +35,7 @@ class BTreeIndex:
 
         # Insert the rest of the items in the generator
         try:
-            for k, v in pair_generator:
+            for k, v, _ in pair_generator:
                 k = TableIndexer.TableIndexer.parse_value(k)
                 lookup = index.btree[k]
                 if lookup:

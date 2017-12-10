@@ -1,143 +1,195 @@
 from server.data_structures.bitmap.Bitmap_Entry import Bitmap_Entry
 from server.data_structures.bitmap.bitmap import Bitmap
+from server.data_structures.btree.btree import BTree
 from server.indexing import TableIndexer
 from server.indexing.BTreeIndex import BTreeIndex
 
 
 class BitmapIndex:
 
-    def __init__(self, btree):
+    def __init__(self, initial_bitstring_pairs, initial_record_pairs, block_size = 4):
 
-        self.bitmap = Bitmap("name", btree)
+        self.bitstringTree = BTree(block_size, initial_bitstring_pairs)
+        self.recordsTree = BTree(block_size, initial_record_pairs)
 
     @staticmethod
     def make(pair_generator):
 
-        initial_pairs = {}
+        initial_bitstring_pairs = {}
+        initial_record_pairs = {}
 
-        try:
-            k, v = next(pair_generator)
-        except StopIteration:
-            assert False, "There are not enough unique values to index this row."
-        k = TableIndexer.TableIndexer.parse_value(k)
+        while(len(initial_bitstring_pairs) < 3):
+            try:
+                key, mem_location, record_num = next(pair_generator)
+            except StopIteration:
+                assert False, "There are not enough unique values to index this row."
+            k = TableIndexer.TableIndexer.parse_value(key)
 
-        new_index = Bitmap_Entry(k,v)
+            new_bitstring_index = Bitmap_Entry(key,record_num)
 
-        if k in initial_pairs:
-            initial_pairs[k].append(v)
-        else:
-            initial_pairs[k] = new_index
+            if k in initial_bitstring_pairs:
+                initial_bitstring_pairs[k].append(record_num)
+            else:
+                initial_bitstring_pairs[k] = new_bitstring_index
+
+            assert k not in initial_record_pairs, "No duplicate record numbers!"
+            initial_record_pairs[k] = mem_location
+
 
         # Create a BTreeIndex with the pairs
-        index = BTreeIndex(initial_pairs)
+        index = BitmapIndex(initial_bitstring_pairs, initial_record_pairs)
 
         # Insert the rest of the items in the generator
         try:
-            for k, v in pair_generator:
-                k = TableIndexer.TableIndexer.parse_value(k)
-                lookup = index.btree[k]
+            for key, mem_location, record_num in pair_generator:
+                k = TableIndexer.TableIndexer.parse_value(key)
+
+                lookup = index.bitstringTree[k]
                 if lookup:
-                    lookup.append(v)
+                    lookup.append(record_num)
                 else:
-                    new_index = Bitmap_Entry(k, v)
-                    index.btree[k] = new_index
+                    new_index = Bitmap_Entry(k, record_num)
+                    index.bitstringTree[k] = new_index
+
+                assert record_num not in index.recordsTree
+                index.recordsTree[record_num] = mem_location
+
         except StopIteration:
             # There were exactly 3 unique values
             # All of the rows were consumed before we got here
             pass
 
         # Return the filled index
-        for k,bitmap_entry in index.items():
+        for k,bitmap_entry in index.bitstringTree.items():
             bitmap_entry.encode_compressed_bitstring();
 
         return index
 
-    def string(self, column_name, num_records):
-
-
-        compressed = self.bitmap.maps[column_name].compressed_bitstring
-        #print("Compressed")
-        #print(compressed)
-        string = ""
-
-
-        while(len(compressed) > 0):
-
-            num_bits = compressed.find("0") + 1
-            #print("Num Bits")
-            #print(num_bits)
-            compressed = compressed[num_bits:]
-            #print("Compressed")
-            #print(compressed)
-
-            space = int(str(compressed[:num_bits]), 2)
-
-            #print("Space")
-            #print(space)
-            string += "0" * space
-            string += "1"
-            #print("String")
-            #print(string)
-
-            compressed = compressed[num_bits:]
-            #print("Compressed")
-            #print(compressed)
-        leng = len(string)
-        if(leng < num_records):
-            endingZeros = "0"*((num_records - leng)+1)
-            string += endingZeros
-
-        return string
 
 
     def __repr__(self):
+        return str(self.bitstringTree)
+
+
+    def op(self, key, comparison):
+        """
+        The key will be compared against all of the keys in the index with the provided comparison
+
+        <, >, <>, =, etc.
+        :param key:
+        :param comparison:
+        :return: set of row locations in file
+        """
+        if comparison == '=':
+            return self.equal(key)
+        elif comparison == '<':
+            return self.lessThan(key)
+        elif comparison == '<=':
+            return self.lessThanOrEqual(key)
+        elif comparison == '<>':
+            return self.notEqual(key)
+        elif comparison == '>':
+            return self.greaterThan(key)
+        elif comparison == '>=':
+            return self.greaterThanOrEqual(key)
+        elif comparison == 'LIKE':
+            return self.like(key)
         return None
 
+    def equal(self, key):
+        values = self.bitstringTree[key].populate_record_list()
+        # List of memory locations
+        ret = []
+        for value in values:
+            ret.append(self.recordsTree[value])
 
-    def do_or(self, column_names, num_records):
+        return ret
 
-        the_string = "0" * (num_records+1)
-        for column in column_names:
+    def notEqual(self, key):
+        val, key_block = self.btree.get_with_block(key)
+        val, block = self.btree.get_with_block(self.btree.smallest)
+        ret = {}
+        while block != key_block:
+            for i in range(len(block.keys)):
+                ret[block.keys[i]] = block.values[i]
+            block = block.next_leaf
 
-            print(("Column"))
-            print(column)
+        for i in range(len(block.keys)):
+            if key != block.keys[i]:
+                ret[block.keys[i]] = block.values[i]
+        block = block.next_leaf
 
-            new_string = self.string(column, num_records)
-            print("new string")
-            print(new_string)
-            print("the_string")
-            print(the_string)
+        while block is not None:
+            for i in range(len(block.keys)):
+                ret[block.keys[i]] = block.values[i]
+            block = block.next_leaf
+        return ret
 
-            zipstring = zip(the_string, new_string)
-            temp_string = ""
-            for a,b in zipstring:
-                temp_string += str(int(a,2) | int(b,2))
-                print(temp_string)
+    def lessThan(self, key):
+        val, stop_block = self.btree.get_with_block(key)
+        val, block = self.btree.get_with_block(self.btree.smallest)
+        ret = {}
+        # Everything is less than until we get to the block that holds the matching key
+        while stop_block != block:
+            for i in range(len(block.keys)):
+                ret[block.keys[i]] = block.values[i]
+            block = block.next_leaf
 
-            the_string = temp_string
+        # This is the only block that does a comparison
+        for i in range(len(block.keys)):
+            if key <= stop_block.keys[i]:
+                break
+            ret[block.keys[i]] = block.values[i]
+        return ret
 
-        return the_string
+    def lessThanOrEqual(self, key):
+        val, stop_block = self.btree.get_with_block(key)
+        val, block = self.btree.get_with_block(self.btree.smallest)
+        ret = {}
+        # Everything is less than until we get to the block that holds the matching key
+        while stop_block != block:
+            for i in range(len(block.keys)):
+                ret[block.keys[i]] = block.values[i]
+            block = block.next_leaf
 
-    def do_and(self, column_names, num_records):
+        # This is the only block that does a comparison
+        for i in range(len(block.keys)):
+            if key < stop_block.keys[i]:
+                break
+            ret[block.keys[i]] = block.values[i]
+        return ret
 
-        the_string = "1" * (num_records+1)
-        for column in column_names:
+    def greaterThan(self, key):
+        val, block = self.btree.get_with_block(key)
+        ret = {}
+        while True:
+            for i in range(len(block.keys)):
+                if block.keys[i] > key:
+                    ret[block.keys[i]] = block.values[i]
+            if block.next_leaf is None:
+                return ret
+            block = block.next_leaf
 
-            print(("Column"))
-            print(column)
+    def greaterThanOrEqual(self, key):
+        val, block = self.btree.get_with_block(key)
+        ret = {}
+        while True:
+            for i in range(len(block.keys)):
+                if block.keys[i] >= key:
+                    ret[block.keys[i]] = block.values[i]
+            if block.next_leaf is None:
+                return ret
+            block = block.next_leaf
 
-            new_string = self.string(column, num_records)
-            print("new string")
-            print(new_string)
-            print("the_string")
-            print(the_string)
-
-            zipstring = zip(the_string, new_string)
-            temp_string = ""
-            for a,b in zipstring:
-                temp_string += str(int(a,2) & int(b,2))
-                print(temp_string)
-
-            the_string = temp_string
-
-        return the_string
+    def like(self, key):
+        val, block = self.btree.get_with_block(self.btree.smallest)
+        ret = {}
+        while True:
+            for i in range(len(block.keys)):
+                pattern = re.compile(key.replace("%", ".*"))
+                check = pattern.match(block.keys[i])
+                if check:
+                    ret[block.keys[i]] = block.values[i]
+            if block.next_leaf is None:
+                return ret
+            block = block.next_leaf
