@@ -56,7 +56,10 @@ class Comparison:
 
         assert False, "No column was found for (%s)" % self.left
 
-    def right_column_or_constant(self, tables):
+    def right_column(self, tables):
+        return self.right_column_or_constant(tables, True)
+
+    def right_column_or_constant(self, tables, force_column=False):
         """
         The comparison has not pasred the left and right to be actual columns yet
 
@@ -64,6 +67,7 @@ class Comparison:
         column combination is found then assume that the right is a constant
 
         :param tables: list of tables
+        :param force_column: fails with error if the right hand side could not be parsed as a column
         :return: Column for right hand side or unboxed constant
         """
         names = self.right.split('.')
@@ -74,6 +78,8 @@ class Comparison:
                     if column_name in table.column_index:
                         return Column(table, column_name)
 
+        assert not force_column, "Column was required on right hand side of Comparison"
+
         # The right must be constant remove the double quotes
         if self.right[0] == "\"" and self.right[-1] == "\"":
             self._right = self._right[1:-1]
@@ -81,9 +87,8 @@ class Comparison:
         # Try to parse as float, date, int, boolean, and text
         return TableIndexer.parse_value(self.right)
 
-    @property
-    def compares_constant(self):
-        return not isinstance(self.right_column_or_constant, Column)
+    def compares_constant(self, tables):
+        return not isinstance(self.right_column_or_constant(tables), Column)
 
     @property
     def operator(self):

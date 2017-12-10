@@ -139,7 +139,7 @@ class QueryFacade:
         left_index = self.index_for_column(left_column)
 
         # This is a column vs constant comparison
-        if comparison.compares_constant:
+        if comparison.compares_constant(self._tables):
             # Get the constant on the right
             right_constant = comparison.right_column_or_constant(self._tables)
 
@@ -149,17 +149,11 @@ class QueryFacade:
             # Reduce all of the key to set(location) entries to a set of tuples with the locations
             reduced = set()
             table_index = self._tables.index(comparison.left_column(self._tables).table)
-            for k, vs in result.items():
-                # if there were not any results found
-                if vs is None:
-                    continue
-
-                # generate tuples for each found tuple
-                for v in vs:
-                    # These are tuples for projections with the location set for this column's table index
-                    result_list = ['*'] * len(self._tables)
-                    result_list[table_index] = v
-                    reduced.add(tuple(result_list))
+            for v in result:
+                # These are tuples for projections with the location set for this column's table index
+                result_list = ['*'] * len(self._tables)
+                result_list[table_index] = v
+                reduced.add(tuple(result_list))
             return reduced
         else:
             # Get the index for the right hand side of the comparison
@@ -167,12 +161,21 @@ class QueryFacade:
             right_index = self.index_for_column(right_column)
 
             # Iterate over the values of the right index
-            result = []
-            for value in right_index.items():
-                # TODO: This is totally wrong
-                result.extend(left_index.op(comparison.operator, value, negated))
+            reduced = set()
+            left_tup_idx = self._tables.index(comparison.left_column(self._tables).table)
+            right_tup_idx = self._tables.index(comparison.right_column(self._tables).table)
+            for k, vs in right_index.items():
+                # Get the rows that satisfy for each table's column
+                right_rows = list(vs)
+                left_rows = left_index.op(k, comparison.operator, negated)
 
-            return result
+                # Get the Cartesian product of the rows and insert '*' for the other columns
+                for pair in self.cartesian_generator([left_rows, right_rows]):
+                    result_list = ['*'] * len(self._tables)
+                    result_list[left_tup_idx] = pair[0]
+                    result_list[right_tup_idx] = pair[1]
+                    reduced.add(tuple(result_list))
+            return reduced
 
     @staticmethod
     def _intersect_tuples(acc, new):
@@ -230,7 +233,6 @@ class QueryFacade:
                     return []
 
         # Since there are no * generate all tuples from the cartesian product unless they are in the tuples
-
         return list(self.cartesian_generator([self._table_indices[repr(tbl)].mem_locs for tbl in self._tables], tuples))
 
     @staticmethod
@@ -255,8 +257,10 @@ class QueryFacade:
             for i in reversed(range(len(tbl_rows))):
                 idx[i] += 1
                 # wrap the index except for the very first list in tbl_rows
-                if idx == len(tbl_rows[i]) and i != 0:
+                if idx[i] == len(tbl_rows[i]) and i != 0:
                     idx[i] = 0
+                else:
+                    break
 
             # don't yield tuples in the the skip_tuples set
             tup = tuple(row_list)

@@ -80,80 +80,83 @@ class BTreeIndex:
 
     def equal(self, key):
         values = self.btree[key]
-        return {key: values}
+        if values is not None:
+            return list(values)
+        else:
+            return []
 
     def notEqual(self, key):
         val, key_block = self.btree.get_with_block(key)
         val, block = self.btree.get_with_block(self.btree.smallest)
-        ret = {}
+        ret = []
         while block != key_block:
             for i in range(len(block.keys)):
-                ret[block.keys[i]] = block.values[i]
+                ret.extend(list(block.values[i]))
             block = block.next_leaf
 
         for i in range(len(block.keys)):
             if key != block.keys[i]:
-                ret[block.keys[i]] = block.values[i]
+                ret.extend(list(block.values[i]))
         block = block.next_leaf
 
         while block is not None:
             for i in range(len(block.keys)):
-                ret[block.keys[i]] = block.values[i]
+                ret.extend(list(block.values[i]))
             block = block.next_leaf
         return ret
 
     def lessThan(self, key):
         val, stop_block = self.btree.get_with_block(key)
         val, block = self.btree.get_with_block(self.btree.smallest)
-        ret = {}
+        ret = []
         # Everything is less than until we get to the block that holds the matching key
         while stop_block != block:
             for i in range(len(block.keys)):
-                ret[block.keys[i]] = block.values[i]
+                ret.extend(list(block.values[i]))
             block = block.next_leaf
 
         # This is the only block that does a comparison
         for i in range(len(block.keys)):
             if key <= stop_block.keys[i]:
                 break
-            ret[block.keys[i]] = block.values[i]
+            ret.extend(list(block.values[i]))
         return ret
 
     def lessThanOrEqual(self, key):
         val, stop_block = self.btree.get_with_block(key)
         val, block = self.btree.get_with_block(self.btree.smallest)
-        ret = {}
+        ret = []
         # Everything is less than until we get to the block that holds the matching key
         while stop_block != block:
             for i in range(len(block.keys)):
-                ret[block.keys[i]] = block.values[i]
+                ret.extend(list(block.values[i]))
             block = block.next_leaf
 
         # This is the only block that does a comparison
         for i in range(len(block.keys)):
             if key < stop_block.keys[i]:
                 break
-            ret[block.keys[i]] = block.values[i]
+            ret.extend(list(block.values[i]))
         return ret
 
     def greaterThan(self, key):
         val, block = self.btree.get_with_block(key)
-        ret = {}
+        ret = []
         while True:
             for i in range(len(block.keys)):
                 if block.keys[i] > key:
-                    ret[block.keys[i]] = block.values[i]
+                    ret.extend(list(block.values[i]))
             if block.next_leaf is None:
                 return ret
             block = block.next_leaf
 
     def greaterThanOrEqual(self, key):
         val, block = self.btree.get_with_block(key)
-        ret = {}
+        ret = []
         while True:
             for i in range(len(block.keys)):
                 if block.keys[i] >= key:
-                    ret[block.keys[i]] = block.values[i]
+                    ret.extend(list(block.values[i]))
             if block.next_leaf is None:
                 return ret
             block = block.next_leaf
@@ -161,12 +164,12 @@ class BTreeIndex:
     def like(self, key, negated):
         val, block = self.btree.get_with_block(self.btree.smallest)
         pattern = re.compile(key.replace("%", ".*"))
-        ret = {}
+        ret = []
         while True:
             for i in range(len(block.keys)):
                 check = pattern.match(block.keys[i])
                 if (check and not negated) or (not check and negated):
-                    ret[block.keys[i]] = block.values[i]
+                    ret.extend(list(block.values[i]))
             if block.next_leaf is None:
                 return ret
             block = block.next_leaf
