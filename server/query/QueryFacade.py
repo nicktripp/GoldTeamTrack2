@@ -223,7 +223,7 @@ class QueryFacade:
                     nt.append('*' if mask[i] else ti)
                 union.add(tuple(nt))
 
-        return sorted(list(union))
+        return sorted(list(union), key=lambda x: float(x) if isinstance(x, int) else float('inf'))
 
     def _negate_tuples(self, tuples):
         # If any columns are * then none of then no tuples should be generated
