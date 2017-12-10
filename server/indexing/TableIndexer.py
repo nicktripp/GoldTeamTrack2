@@ -19,6 +19,12 @@ class TableIndexer:
         else:
             self._generate_indices()
 
+        # load or generate the memory locations
+        if self._all_mem_locs_exist():
+            self._load_mem_locs()
+        else:
+            self._read_mem_locs()
+
     def path_for_column(self, col_name):
         return TableIndexer.relative_path + self._table.name + "_" + col_name + ".idx"
 
@@ -45,6 +51,25 @@ class TableIndexer:
                 with open(self.path_for_column(col), 'wb') as g:
                     pickle.dump(index, g)
 
+    def _all_mem_locs_exist(self):
+        if not os.path.exists(self.table.filename + "_mem_locs.pickle"):
+            return False
+        return True
+
+    def _load_mem_locs(self):
+        with open(self.table.filename + "_mem_locs.pickle", 'rb') as f:
+            self._mem_locs = pickle.load(f)
+
+    def _read_mem_locs(self):
+        self._mem_locs = []
+        with open(self.table.filename, 'rb') as f:
+            size = os.path.getsize(self.table.filename)
+            while self._mem_locs[-1] < size:
+                f.readline()
+                self._mem_locs.append(f.tell())
+        with open(self.table.filename + "_mem_locs.pickle", 'wb') as f:
+            pickle.dump(self._mem_locs, f, pickle.HIGHEST_PROTOCOL)
+
     def _value_location_generator(self, f, size, j):
         position = f.tell()
         i = 0
@@ -62,6 +87,10 @@ class TableIndexer:
     @property
     def column_indices(self):
         return self._column_indices
+
+    @property
+    def mem_locs(self):
+        return self._mem_locs
 
     @staticmethod
     def parse_value(val):
