@@ -53,7 +53,7 @@ class BTreeIndex:
     def items(self):
         return self.btree.items()
 
-    def op(self, key, comparison):
+    def op(self, key, comparison, negated=False):
         """
         The key will be compared against all of the keys in the index with the provided comparison
 
@@ -62,20 +62,20 @@ class BTreeIndex:
         :param comparison:
         :return: set of row locations in file
         """
-        if comparison == '=':
+        if (comparison == '=' and not negated) or (comparison == '<>' and negated):
             return self.equal(key)
-        elif comparison == '<':
+        elif (comparison == '<' and not negated) or (comparison == '>=' and negated):
             return self.lessThan(key)
-        elif comparison == '<=':
+        elif (comparison == '<=' and not negated) or (comparison == '>' and negated):
             return self.lessThanOrEqual(key)
-        elif comparison == '<>':
+        elif (comparison == '<>' and not negated) or (comparison == '=' and negated):
             return self.notEqual(key)
-        elif comparison == '>':
+        elif (comparison == '>' and not negated) or (comparison == '<=' and negated):
             return self.greaterThan(key)
-        elif comparison == '>=':
+        elif (comparison == '>=' and not negated) or (comparison == '<' and negated):
             return self.greaterThanOrEqual(key)
         elif comparison == 'LIKE':
-            return self.like(key)
+            return self.like(key, negated)
         return None
 
     def equal(self, key):
@@ -158,14 +158,14 @@ class BTreeIndex:
                 return ret
             block = block.next_leaf
 
-    def like(self, key):
+    def like(self, key, negated):
         val, block = self.btree.get_with_block(self.btree.smallest)
+        pattern = re.compile(key.replace("%", ".*"))
         ret = {}
         while True:
             for i in range(len(block.keys)):
-                pattern = re.compile(key.replace("%", ".*"))
                 check = pattern.match(block.keys[i])
-                if check:
+                if (check and not negated) or (not check and negated):
                     ret[block.keys[i]] = block.values[i]
             if block.next_leaf is None:
                 return ret
