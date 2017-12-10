@@ -95,14 +95,17 @@ class QueryFacade:
 
     def eval_conditions(self, conditions):
         acc_list = []
-        for group in conditions:
+        not_flag = conditions[0]
+        for group in conditions[1]:
 
             # Find the rows that pass each AND condition
             acc = None
-            for condition in group:
-                if isinstance(condition, Comparison):
+            and_not_flag = group[0]
+            for condition in group[1]:
+                cond_not_flag = condition[0]
+                if isinstance(condition[1], Comparison):
                     # Evaluate the comparison on an index or on over multiple indices
-                    result = self.eval_comparison(condition)
+                    result = self.eval_comparison(condition[1], cond_not_flag)
                 else:
                     result = self.eval_conditions(condition)
 
@@ -110,15 +113,24 @@ class QueryFacade:
                 if acc is None:
                     acc = result
                 acc = self._intersect_tuples(acc, result)
+
+            # Handle NOT (A = b AND B = c)
+            if and_not_flag:
+                acc = self._negate_tuples(acc)
+
             acc_list.append(acc)
 
         # union (OR) the results of the conditions
-        return self._sorted_tuple_union(acc_list)
+        union = self._sorted_tuple_union(acc_list)
+        if not_flag:
+            union = self._negate_tuples(union)
+        return union
 
-    def eval_comparison(self, comparison):
+    def eval_comparison(self, comparison, negated):
         """
         Performs the comparison by looking up the proper indexes for the left and right hand side of the comparison.
         Handles constant comparisons in a separate case
+        :param negated: flag for NOT flag used on condition
         :param comparison:
         :return:
         """
@@ -132,7 +144,7 @@ class QueryFacade:
             right_constant = comparison.right_column_or_constant(self._tables)
 
             # Perform the comparison over the index
-            result = left_index.op(right_constant, comparison.operator)
+            result = left_index.op(right_constant, comparison.operator, negated)
 
             # Reduce all of the key to set(location) entries to a set of tuples with the locations
             reduced = set()
@@ -158,7 +170,7 @@ class QueryFacade:
             result = []
             for value in right_index.items():
                 # TODO: This is totally wrong
-                result.extend(left_index.op(comparison.operator, value))
+                result.extend(left_index.op(comparison.operator, value, negated))
 
             return result
 
@@ -210,12 +222,24 @@ class QueryFacade:
 
         return sorted(list(union))
 
+    def _negate_tuples(self, tuples):
+        # If any columns are * then none of then no tuples should be generated
+        for t in tuples:
+            for i, ti in enumerate(t):
+                if ti == "*":
+                    return []
+
+        # Since there are no * generate all tuples from the cartesian product unless they are in the tuples
+
+        return list(self.cartesian_generator([self._table_indices[repr(tbl)].mem_locs for tbl in self._tables], tuples))
+
     @staticmethod
-    def cartesian_generator(tbl_rows):
+    def cartesian_generator(tbl_rows, skip_tuples=set()):
         """
         tbl_rows is a list of lists of row start locations
 
         Generate the cartesian product of tbl_rows
+        :param skip_tuples: tuples in this set will not be yielded
         :param tbl_rows: list of lists of row locations
         """
         idx = [0] * len(tbl_rows)
@@ -234,4 +258,7 @@ class QueryFacade:
                 if idx == len(tbl_rows[i]) and i != 0:
                     idx[i] = 0
 
-            yield tuple(row_list)
+            # don't yield tuples in the the skip_tuples set
+            tup = tuple(row_list)
+            if tup not in skip_tuples:
+                yield tup

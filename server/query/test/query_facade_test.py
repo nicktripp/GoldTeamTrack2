@@ -21,6 +21,30 @@ if __name__ == "__main__":
     out = Hangman.execute(query)
     assert out == ['5,6,7,8', '9,10,11,12']
 
+    query = "SELECT * FROM small S WHERE NOT (S.a > 1)"
+    out = Hangman.execute(query)
+    assert out == ['1,2,3,4']
+
+    query = "SELECT * FROM small S WHERE NOT S.a > 1"
+    out = Hangman.execute(query)
+    assert out == ['1,2,3,4']
+
+    query = "SELECT * FROM small S WHERE NOT (S.a = 1 OR S.a = 5)"
+    out = Hangman.execute(query)
+    assert out == ['9,10,11,12']
+
+    query = "SELECT * FROM small S WHERE S.b > 2 AND (NOT (S.a = 5))"
+    out = Hangman.execute(query)
+    assert out == ['9,10,11,12']
+
+    query = 'SELECT * FROM small_text S WHERE NOT S.a LIKE "%ac%"'
+    out = Hangman.execute(query)
+    assert out == ["abc,abd,abe,abf,abg"]
+
+    query = 'SELECT * FROM small_text S WHERE NOT (S.a LIKE "%ac%")'
+    out = Hangman.execute(query)
+    assert out == ["abc,abd,abe,abf,abg"]
+
     query = "SELECT * FROM small S WHERE S.a > 1 AND S.b <> 10"
     out = Hangman.execute(query)
     assert out == ['5,6,7,8']
@@ -95,6 +119,15 @@ if __name__ == "__main__":
                    '9,10,11,12,5,6,7,8',
                    '9,10,11,12,9,10,11,12']
 
+    query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE (S1.a = 1 OR (S1.a = 5 OR S1.a = 9)) AND NOT S1.a = 1"
+    out = Hangman.execute(query)
+    assert out == ['5,6,7,8,1,2,3,4',
+                   '5,6,7,8,5,6,7,8',
+                   '5,6,7,8,9,10,11,12',
+                   '9,10,11,12,1,2,3,4',
+                   '9,10,11,12,5,6,7,8',
+                   '9,10,11,12,9,10,11,12']
+
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE (S2.b = 2 AND (S1.a < 9 AND S1.a > 1))"
     out = Hangman.execute(query)
     assert out == ['5,6,7,8,1,2,3,4']
@@ -104,3 +137,4 @@ if __name__ == "__main__":
     assert out == ['1,2,3,4,1,2,3,4',
                    '5,6,7,8,1,2,3,4',
                    '9,10,11,12,1,2,3,4']
+    

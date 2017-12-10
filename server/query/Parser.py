@@ -331,7 +331,7 @@ class Parser:
         self.check_index(stmt, idx)
 
         # Sanity check that WHERE is next token
-        if (not type(stmt.tokens[idx]) == sqlparse.sql.Where):
+        if not type(stmt.tokens[idx]) == sqlparse.sql.Where:
             raise SQLParsingError(sqlparse.format(stmt.value, keyword_case='upper'), "Expected 'WHERE' keyword")
 
         self.where = stmt.tokens[idx]
@@ -367,11 +367,11 @@ class Parser:
         return idx + 1
 
     def consume_multiple_conditions(self, stmt, idx):
-        conds = [[]]
+        conds = (False, [(False, [])])
         expecting = True
         while idx < len(stmt.tokens):
             idx, condition = self.consume_condition(stmt, idx)
-            conds[-1].append(condition)
+            conds[1][-1][1].append(condition)
             if idx >= len(stmt.tokens):
                 expecting = False
                 break
@@ -407,7 +407,7 @@ class Parser:
 
         # check that COMPARISON is next token
         if type(stmt.tokens[idx]) == sqlparse.sql.Comparison:
-            return idx + 1, Comparison(stmt.tokens[idx])
+            return idx + 1, (False, Comparison(stmt.tokens[idx]))
         elif type(stmt.tokens[idx]) == sqlparse.sql.Identifier:
             # Handling the LIKE case:
             column = stmt.tokens[idx].value
@@ -434,7 +434,7 @@ class Parser:
                 raise SQLParsingError(stmt.tokens[idx].value, "Invalid Identifier")
 
             pattern = stmt.tokens[idx].value
-            return idx + 1, Comparison.from_like(column, pattern)
+            return idx + 1, (False, Comparison.from_like(column, pattern))
         elif type(stmt.tokens[idx]) == sqlparse.sql.Parenthesis:
             # Handle nested conditions in parenthesis
             parenthesis = stmt.tokens[idx]
@@ -442,6 +442,15 @@ class Parser:
             parenthesis.tokens = parenthesis.tokens[1:-1]
             _, conds = self.consume_multiple_conditions(parenthesis, 0)
             return idx, conds
+        elif stmt.tokens[idx].ttype == sqlparse.tokens.Keyword and stmt.tokens[idx].match(sqlparse.tokens.Keyword, 'NOT'):
+            # Handle NOT case
+            idx += 1
+            self.check_index(stmt, idx)
+            idx = self.consume_whitespace(stmt, idx)
+
+            # Require Parenthesis
+            idx, cond_tuple = self.consume_condition(stmt, idx)
+            return idx, (True, cond_tuple[1])
         else:
             raise SQLParsingError(stmt.tokens[idx].value, "Invalid Identifier")
 
@@ -455,13 +464,13 @@ class Parser:
         @returns the index of the token after this token phrase
         """
         if len(conds) == 0:
-            conds.append([])
+            conds[1].append((False, []))
         if stmt.tokens[idx].match(sqlparse.tokens.Keyword, "AND"):
             # Continue appending to most recent logic_group
             pass
         elif stmt.tokens[idx].match(sqlparse.tokens.Keyword, "OR"):
             # Start a new logic group for new AND conditions
-            conds.append([])
+            conds[1].append((False, []))
         else:
             raise SQLParsingError(stmt.tokens[idx].value, "Not a boolean operator")
 
@@ -482,20 +491,20 @@ class Parser:
         """
 
         for stmt in self.statements:
-            if (not self.validate(stmt)):
+            if not self.validate(stmt):
                 raise SQLParsingError(sqlparse.format(stmt.value, keyword_case='upper'), 'Unrecognized SQL')
 
             idx = 0
             idx = self.consume_select(stmt, idx)
             idx = self.consume_from(stmt, idx)
 
-            if (idx < len(stmt.tokens)):
+            if idx < len(stmt.tokens):
                 self.consume_where(stmt, idx)
-                if (self.join_conds is not None):
+                if self.join_conds is not None:
                     self.conds[0].insert(0, self.join_conds)
             else:
                 self.conds = []
-                if (self.join_conds is not None):
+                if self.join_conds is not None:
                     self.conds = self.join_conds
 
             # Convert columns from strings to Column instances

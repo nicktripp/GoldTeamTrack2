@@ -64,9 +64,12 @@ class TableIndexer:
         self._mem_locs = []
         with open(self.table.filename, 'rb') as f:
             size = os.path.getsize(self.table.filename)
+            f.readline()
+            self._mem_locs.append(f.tell())
             while self._mem_locs[-1] < size:
                 f.readline()
                 self._mem_locs.append(f.tell())
+            del self._mem_locs[-1]
         with open(self.table.filename + "_mem_locs.pickle", 'wb') as f:
             pickle.dump(self._mem_locs, f, pickle.HIGHEST_PROTOCOL)
 

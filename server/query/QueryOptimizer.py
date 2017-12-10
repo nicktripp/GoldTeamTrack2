@@ -26,13 +26,19 @@ class QueryOptimizer:
     def _compute_execution_conditions(self):
         # Each item in the self.conds list is a list of ANDed comparisons
         # the results of each item are ORed together for the final result
-        for and_group in self._conds:
-            # Each item in self
-            for cond in and_group:
-                if isinstance(cond, Comparison):
+        if not self._conds:
+            self._exec_conds = []
+            return
+
+        not_flag = self._conds[0]
+        for and_group in self._conds[1]:
+            and_not_flag = and_group[0]
+            for cond in and_group[1]:
+                cond_not_flag = cond[0]
+                if isinstance(cond[1], Comparison):
                     # Condition in AND group
                     pass
-                elif isinstance(cond, list):
+                elif isinstance(cond[1], list):
                     # Parenthesis of with new conditions
                     # TODO: recurse
                     pass
