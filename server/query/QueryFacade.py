@@ -1,4 +1,3 @@
-import operator
 import os
 
 from server.indexing.TableIndexer import TableIndexer

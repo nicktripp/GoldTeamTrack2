@@ -25,6 +25,8 @@ class BTree:
         self.root.values = [left, right]
         self.smallest = sorted_keys[0]
 
+        self.n = 3
+
     def __repr__(self):
         return str(self.root)
 
@@ -49,6 +51,8 @@ class BTree:
 
         if key < self.smallest:
             self.smallest = key
+
+        self.n += 1
 
     def get_with_block(self, key):
         return self.root.get_with_block(key)

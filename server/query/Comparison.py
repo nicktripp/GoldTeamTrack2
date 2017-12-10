@@ -14,6 +14,9 @@ class Comparison:
         Convert from a sqlparse Comparison
         :param sqlparse_comparison:
         """
+        if sqlparse_comparison is None:
+            return
+
         self._left = sqlparse_comparison.left.value
         self._right = sqlparse_comparison.right.value
         for token in sqlparse_comparison.tokens:
@@ -86,16 +89,10 @@ class Comparison:
     def operator(self):
         return self._operator
 
-
-class LikeComparison(Comparison):
-    def __init__(self, column, pattern):
-        self._column = column
-        self._pattern = pattern
-
-    @property
-    def column(self):
-        return self._column
-
-    @property
-    def pattern(self):
-        return self._pattern
+    @staticmethod
+    def from_like(column, pattern):
+        comparison = Comparison(None)
+        comparison._left = column
+        comparison._right = pattern
+        comparison._operator = "LIKE"
+        return comparison

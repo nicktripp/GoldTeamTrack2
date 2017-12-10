@@ -25,6 +25,22 @@ if __name__ == "__main__":
     out = Hangman.execute(query)
     assert out == ['5,6,7,8']
 
+    query = 'SELECT * FROM small_text S WHERE S.a LIKE "ab%"'
+    out = Hangman.execute(query)
+    assert out == ["abc,abd,abe,abf,abg"]
+
+    query = 'SELECT * FROM small_text S WHERE S.a LIKE "%ac%"'
+    out = Hangman.execute(query)
+    assert out == ["acb,adb,aeb,afb,agb", "bac,bad,bae,baf,bag"]
+
+    query = 'SELECT * FROM small_text S WHERE S.a LIKE "ab%" OR S.a LIKE "%ac%"'
+    out = Hangman.execute(query)
+    assert out == ["abc,abd,abe,abf,abg", "acb,adb,aeb,afb,agb", "bac,bad,bae,baf,bag"]
+
+    query = 'SELECT * FROM small_text S WHERE S.a LIKE "%a%" AND S.b = "abd"'
+    out = Hangman.execute(query)
+    assert out == ["abc,abd,abe,abf,abg"]
+
     query = "SELECT S1.* FROM small S1, small S2 WHERE S1.a > 1 AND S2.a < 9"
     out = Hangman.execute(query)
     assert out == ['5,6,7,8', '5,6,7,8', '9,10,11,12', '9,10,11,12']

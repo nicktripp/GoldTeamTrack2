@@ -1,7 +1,7 @@
 import sqlparse
 
 from server.query.Column import Column
-from server.query.Comparison import Comparison, LikeComparison
+from server.query.Comparison import Comparison
 from server.query.SQLParsingError import SQLParsingError
 from server.query.Join import *
 from server.query.Table import Table
@@ -434,7 +434,7 @@ class Parser:
                 raise SQLParsingError(stmt.tokens[idx].value, "Invalid Identifier")
 
             pattern = stmt.tokens[idx].value
-            return idx + 1, LikeComparison(column, pattern)
+            return idx + 1, Comparison.from_like(column, pattern)
         elif type(stmt.tokens[idx]) == sqlparse.sql.Parenthesis:
             # Handle nested conditions in parenthesis
             parenthesis = stmt.tokens[idx]
