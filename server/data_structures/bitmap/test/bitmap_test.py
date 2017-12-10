@@ -1,4 +1,4 @@
-from server.data_structures.bitmap.BitmapIndex import BitmapIndex
+from server.indexing.BitmapIndex import BitmapIndex
 from server.data_structures.bitmap.bitmap import Bitmap
 from server.data_structures.btree.btree import BTree
 
@@ -15,6 +15,6 @@ index = BitmapIndex(btree)
 
 print(index.string(4, 17))
 
-print(index.do_or([4,6], 17))
+#print(index.do_or([4,6], 17))
 
-print(index.do_and([4,6], 17))
+#print(index.do_and([4,6], 17))

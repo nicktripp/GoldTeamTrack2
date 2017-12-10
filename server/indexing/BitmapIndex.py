@@ -1,4 +1,7 @@
+from server.data_structures.bitmap.Bitmap_Entry import Bitmap_Entry
 from server.data_structures.bitmap.bitmap import Bitmap
+from server.indexing import TableIndexer
+from server.indexing.BTreeIndex import BTreeIndex
 
 
 class BitmapIndex:
@@ -6,6 +9,48 @@ class BitmapIndex:
     def __init__(self, btree):
 
         self.bitmap = Bitmap("name", btree)
+
+    @staticmethod
+    def make(pair_generator):
+
+        initial_pairs = {}
+
+        try:
+            k, v = next(pair_generator)
+        except StopIteration:
+            assert False, "There are not enough unique values to index this row."
+        k = TableIndexer.TableIndexer.parse_value(k)
+
+        new_index = Bitmap_Entry(k,v)
+
+        if k in initial_pairs:
+            initial_pairs[k].append(v)
+        else:
+            initial_pairs[k] = new_index
+
+        # Create a BTreeIndex with the pairs
+        index = BTreeIndex(initial_pairs)
+
+        # Insert the rest of the items in the generator
+        try:
+            for k, v in pair_generator:
+                k = TableIndexer.TableIndexer.parse_value(k)
+                lookup = index.btree[k]
+                if lookup:
+                    lookup.append(v)
+                else:
+                    new_index = Bitmap_Entry(k, v)
+                    index.btree[k] = new_index
+        except StopIteration:
+            # There were exactly 3 unique values
+            # All of the rows were consumed before we got here
+            pass
+
+        # Return the filled index
+        for k,bitmap_entry in index.items():
+            bitmap_entry.encode_compressed_bitstring();
+
+        return index
 
     def string(self, column_name, num_records):
 

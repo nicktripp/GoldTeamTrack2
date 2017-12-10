@@ -53,7 +53,7 @@ class Bitmap:
                 i = math.ceil(math.log2(difference+1))
                 bitstring += ("1" * (i - 1) + "0")
                 bitstring += "{0:b}".format(difference)
-                #print(bitstring)
+                print(bitstring)
 
             bitmap_entry.compressed_bitstring = bitstring
 
