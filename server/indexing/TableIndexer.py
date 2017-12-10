@@ -73,10 +73,10 @@ class TableIndexer:
         except ValueError:
             pass
 
-        try:
-            return bool(val)
-        except ValueError:
-            pass
+        if val == 'True' or val == 'true':
+            return True
+        elif val == 'False' or val == 'false':
+            return False
 
         try:
             return date_parse(val)
