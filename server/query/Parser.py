@@ -29,12 +29,11 @@ class Parser:
 
         self.query_string = query_string
         self.statements = sqlparse.parse(query_string)
-        self.cols  = []             # Set of selected column names
-        self.tbls  = []             # Set of selected table names. Returned as a list of Table objects
-        self.conds = []             # Set of conditions.  Format to be changed.
-        self.join_conds = None      # Set of Join conditions, if they are there.
-        self.is_distinct = False    # Boolean describing if the keyword DISTINCT is used.
-
+        self.cols = []  # Set of selected column names
+        self.tbls = []  # Set of selected table names. Returned as a list of Table objects
+        self.conds = []  # Set of conditions.  Format to be changed.
+        self.join_conds = None  # Set of Join conditions, if they are there.
+        self.is_distinct = False  # Boolean describing if the keyword DISTINCT is used.
 
     @staticmethod
     def validate(stmt):
@@ -100,11 +99,12 @@ class Parser:
         self.check_index(stmt, idx)
 
         # Check to see if DISTINCT is present.
-        if(self.is_keyword_remaining(stmt,idx,"DISTINCT")):
+        if (self.is_keyword_remaining(stmt, idx, "DISTINCT")):
             if (not stmt.tokens[idx].match(sqlparse.tokens.Keyword, "DISTINCT")):
-                raise SQLParsingError(sqlparse.format(stmt.value, keyword_case='upper'), "Unrecognized SELECT DISTINCT format")
+                raise SQLParsingError(sqlparse.format(stmt.value, keyword_case='upper'),
+                                      "Unrecognized SELECT DISTINCT format")
             self.is_distinct = True
-            idx += 1 # Advance cursor
+            idx += 1  # Advance cursor
             # Eliminate whitespace trailing after DISTINCT
             idx = self.consume_whitespace(stmt, idx)
             self.check_index(stmt, idx)
@@ -149,7 +149,7 @@ class Parser:
     def str_to_Table(self, tbl_str):
         tbl_list = tbl_str.split(" ")
 
-        if(len(tbl_list) != 1 and len(tbl_list) != 2):
+        if (len(tbl_list) != 1 and len(tbl_list) != 2):
             raise ValueError("Unrecognized string-to-Table format")
 
         return Table(*tbl_list)
@@ -158,8 +158,8 @@ class Parser:
         """
         Checks the query after the specified index to see if there is a KEYWORD statement remaining.
         """
-        while(idx < len(stmt.tokens)):
-            if (stmt.tokens[idx].match(sqlparse.tokens.Keyword, keyword)):
+        while idx < len(stmt.tokens):
+            if stmt.tokens[idx].match(sqlparse.tokens.Keyword, keyword):
                 return True
             idx += 1
         return False
@@ -176,7 +176,7 @@ class Parser:
         self.check_index(stmt, idx)
 
         # Check if JOIN is next token
-        if (not stmt.tokens[idx].match(sqlparse.tokens.Keyword, "JOIN")):
+        if not stmt.tokens[idx].match(sqlparse.tokens.Keyword, "JOIN"):
             raise SQLParsingError(stmt.tokens[idx].value, "Expected 'JOIN' keyword")
 
         idx += 1  # Advance cursor
@@ -188,7 +188,7 @@ class Parser:
         self.check_index(stmt, idx)
 
         # Next Token is our right-hand set of selected tables
-        if (not self.validate_identifier(stmt, idx)):
+        if not self.validate_identifier(stmt, idx):
             raise SQLParsingError(stmt.tokens[idx].value, "Invalid Identifier")
 
         tbls = self.token_to_list(stmt.tokens[idx])
@@ -196,7 +196,6 @@ class Parser:
             self.tbls.append(self.str_to_Table(tbl))
 
         return idx + 1
-
 
     def consume_on(self, stmt, idx, has_joined):
         """
@@ -209,13 +208,13 @@ class Parser:
         idx = self.consume_whitespace(stmt, idx)
 
         # Check if ON is next token
-        if (not stmt.tokens[idx].match(sqlparse.tokens.Keyword, "ON")):
+        if not stmt.tokens[idx].match(sqlparse.tokens.Keyword, "ON"):
             raise SQLParsingError(stmt.tokens[idx].value, "Expected 'ON' keyword")
 
-        if(not has_joined):
+        if not has_joined:
             raise SQLParsingError(stmt.tokens[idx].value, "Unexpected 'ON' keyword")
 
-        idx += 1 # advance cursor
+        idx += 1  # advance cursor
         self.check_index(stmt, idx)
 
         # Eliminate whitespace trailing after ON
@@ -232,17 +231,17 @@ class Parser:
         return idx
 
     def validate_join_conditions(self, stmt, conds):
-        if (conds == []):
+        if not conds:
             return
 
-        for item in conds:
-            if type(item) is list:
+        for item in conds[1]:
+            if type(item[1]) is list:
                 self.validate_join_conditions(stmt, item)
             else:
-                assert type(item) is Comparison
-                if (item.operator != '='):
-                    raise SQLParsingError(sqlparse.format(stmt.value, keyword_case='upper'), "JOIN conditions must be equality comparisons!")
-
+                assert type(item[1]) is Comparison
+                if item[1].operator != '=':
+                    raise SQLParsingError(sqlparse.format(stmt.value, keyword_case='upper'),
+                                          "JOIN conditions must be equality comparisons!")
 
     def consume_from(self, stmt, idx):
         """
@@ -265,7 +264,7 @@ class Parser:
         self.print_curr_token(stmt, idx)  # LOG
 
         # Sanity check that FROM is next token
-        if (not stmt.tokens[idx].match(sqlparse.tokens.Keyword, 'FROM')):
+        if not stmt.tokens[idx].match(sqlparse.tokens.Keyword, 'FROM'):
             raise SQLParsingError(stmt.tokens[idx].value, "Expected 'FROM' keyword")
         idx += 1  # Advance cursor
 
@@ -276,7 +275,7 @@ class Parser:
         self.print_curr_token(stmt, idx)  # LOG
 
         # Next Token is our set of selected tables
-        if (not self.validate_identifier(stmt, idx)):
+        if not self.validate_identifier(stmt, idx):
             raise SQLParsingError(stmt.tokens[idx].value, "Invalid Identifier")
 
         tbls = self.token_to_list(stmt.tokens[idx])
@@ -286,34 +285,32 @@ class Parser:
         idx += 1
 
         # If nothing more to process, graceful exit
-        if (idx >= len(stmt.tokens)):
+        if idx >= len(stmt.tokens):
             return idx
 
         # Process all JOIN statements
         has_join = False
-        while(self.is_keyword_remaining(stmt, idx, "JOIN")):
+        while self.is_keyword_remaining(stmt, idx, "JOIN"):
             has_join = True
             idx = self.consume_join(stmt, idx)
 
         # If nothing more to process, graceful exit
-        if (idx >= len(stmt.tokens)):
+        if idx >= len(stmt.tokens):
             return idx
 
         # Process potential ON statement:
-        if(self.is_keyword_remaining(stmt, idx, "ON")):
+        if self.is_keyword_remaining(stmt, idx, "ON"):
             idx = self.consume_on(stmt, idx, has_join)
 
         return idx
 
     def list_to_Join(self, table_list):
-        if table_list == []:
+        if not table_list:
             raise ValueError("List must have at least one element.")
         elif len(table_list) == 1:
             return SingletonJoin(table_list[0])
         else:
-            return Join(SingletonJoin(table_list[0]), JoinType.CROSS, self.list_to_Join(self, table_list[1:]))
-
-
+            return Join(SingletonJoin(table_list[0]), JoinType.CROSS, self.list_to_Join(table_list[1:]))
 
     def consume_where(self, stmt, idx):
         """
@@ -442,7 +439,8 @@ class Parser:
             parenthesis.tokens = parenthesis.tokens[1:-1]
             _, conds = self.consume_multiple_conditions(parenthesis, 0)
             return idx, conds
-        elif stmt.tokens[idx].ttype == sqlparse.tokens.Keyword and stmt.tokens[idx].match(sqlparse.tokens.Keyword, 'NOT'):
+        elif stmt.tokens[idx].ttype == sqlparse.tokens.Keyword and stmt.tokens[idx].match(sqlparse.tokens.Keyword,
+                                                                                          'NOT'):
             # Handle NOT case
             idx += 1
             self.check_index(stmt, idx)

@@ -14,6 +14,8 @@ class TableProjector:
         self._tables = tables
         self._projection_columns = projection_columns
 
+        # TODO: support projection order of columns
+
         # Fill map of table to projection columns index in row of table
         self._columns_for_table = defaultdict(list)
         for col in self._projection_columns:

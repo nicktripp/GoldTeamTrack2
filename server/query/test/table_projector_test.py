@@ -17,4 +17,3 @@ if __name__ == "__main__":
     output = tp.aggregate([(419, 419), (710, 710), (1055, 1055), (419, 419)], True)
     # Using DISTINCT changes the order of the output rows because of sets
     assert set(output) == set(['Avatar,James Cameron', "Pirates of the Caribbean: At World's End,Gore Verbinski", 'Spectre,Sam Mendes'])
-
