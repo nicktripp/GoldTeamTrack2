@@ -112,5 +112,8 @@ tmp
 !/data/database.csv
 !/data/movies.csv
 !/data/review50k.csv
+!/data/checkin.csv
+!/data/business.csv
 !/server/query/test/data/
 !/server/query/test/data/movies.csv
+!/data/photos.csv
