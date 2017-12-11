@@ -25,7 +25,10 @@ class BTreeIndex:
                 k, v, _ = next(pair_generator)
             except StopIteration:
                 assert False, "There are not enough unique values to index this row."
-            k = table.parse_value_for_column(k, column_name)
+            try:
+                k = table.parse_value_for_column(k, column_name)
+            except ValueError:
+                print("Error parsing at location %s" % v)
             if k in initial_pairs:
                 initial_pairs[k].add(v)
             else:
@@ -37,7 +40,10 @@ class BTreeIndex:
         # Insert the rest of the items in the generator
         try:
             for k, v, _ in pair_generator:
-                k = table.parse_value_for_column(k, column_name)
+                try:
+                    k = table.parse_value_for_column(k, column_name)
+                except ValueError:
+                    print("Error parsing at location %s" % v)
                 lookup = index.btree[k]
                 if lookup:
                     lookup.add(v)

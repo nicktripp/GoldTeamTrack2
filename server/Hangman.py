@@ -3,7 +3,7 @@ from server.query.QueryFacade import QueryFacade
 from server.query.QueryOptimizer import QueryOptimizer
 from server.query.SQLParsingError import SQLParsingError
 from server.query.TableProjector import TableProjector
-
+import time
 
 class Hangman:
     """
@@ -23,6 +23,8 @@ class Hangman:
         """
 
         try:
+            t0 = time.time()
+
             # Parse the query
             parser = Parser(query)
             parsed_query = parser.parse_select_from_where()
@@ -32,6 +34,10 @@ class Hangman:
 
             # Execute the plan through the facade
             facade = QueryFacade(optimizer.tables)
+
+            t1 = time.time()
+            print("%f s elapsed preparing for execution" % (t1 - t0))
+
             results = facade.execute_plan(optimizer.projection_columns, optimizer.tables, optimizer.execution_conditions)
 
             # Aggregate the results

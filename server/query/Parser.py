@@ -499,7 +499,7 @@ class Parser:
             if idx < len(stmt.tokens):
                 self.consume_where(stmt, idx)
                 if self.join_conds is not None:
-                    self.conds[0].insert(0, self.join_conds)
+                    self.conds = (False, [(False,[self.join_conds, self.conds])])
             else:
                 self.conds = []
                 if self.join_conds is not None:

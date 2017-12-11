@@ -177,6 +177,8 @@ class TableProjector:
         if s[-1] != "\"":
             return False
         if s[-1] == "\"":
+            if len(s) == 1:
+                return False
             q = 0
             for c in reversed(s):
                 if c == "\"":

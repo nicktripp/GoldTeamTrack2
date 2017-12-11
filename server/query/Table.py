@@ -57,24 +57,35 @@ class Table:
             i = 0
             p = f.tell()
             size = os.path.getsize(self.filename)
-            while i < 3 and p < size:
+            while i < 5 and p < size:
                 col_vals = TableProjector.read_col_vals_multiline(p, f)
                 for col, val in zip(cols, col_vals):
+                    if val == "":
+                        # Wait for the value to be filled out
+                        continue
                     if col not in self._column_types:
                         parsed = self.parse_value(val)
                         self._column_types[col] = type(parsed)
                     else:
                         assert self._column_types[col] != self.parse_value(val), "Values in a column must " \
-                                                                                 "have the same type. "
-                i += 1
+                                                                               "have the same type. "
+                # Read several rows past once every  type has been seen once
+                if len(self._column_types) == len(self._column_index):
+                    i += 1
 
     def parse_value_for_column(self, value, column_name):
         t = self._column_types[column_name]
         if t is int:
+            if value == "":
+                return 0
             return int(value)
         elif t is float:
+            if value == "":
+                return 0.0
             return float(value)
         elif t is bool:
+            if value == "":
+                return False
             if value == 'True' or value == 'true':
                 return True
             elif value == 'False' or value == 'false':
@@ -83,6 +94,8 @@ class Table:
             return date_parse(value)
         elif t is str:
             return value
+        else:
+            print(t)
 
         assert False, "All values should have been parsed."
 
