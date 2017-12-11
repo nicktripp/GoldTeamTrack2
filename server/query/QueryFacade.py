@@ -187,10 +187,9 @@ class QueryFacade:
                 continue
 
             # If they disagree on a "*" field reduce it to the other tuple's value
-            keep = True
-            t3 = None
             for t2 in new:
                 t3 = []
+                keep = True
                 for a, b in zip(t1, t2):
                     if a == b:
                         t3.append(a)
