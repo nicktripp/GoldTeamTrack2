@@ -1,19 +1,26 @@
+import datetime
 import os
+from dateutil.parser import parse as date_parse
+
+from server.query.TableProjector import TableProjector
 
 
 class Table:
-
     relative_path = "./data/%s.csv"
 
     def __init__(self, name, nickname=None):
         self._name = name
         self._nickname = nickname
-        assert os.path.exists(self.filename), "The table (%s) must exist." % self._name
+        assert os.path.exists(self.filename), "The table (%s) must exist." % self.filename
 
         # Fill the column index
         with open(self.filename, 'r') as f:
             columns = f.readline()[:-1].split(',')
             self._column_index = {col: i for i, col in enumerate(columns)}
+
+        # Check the types of the columns
+        self._column_types = {}
+        self._check_column_types()
 
     def __repr__(self):
         if self._nickname is None:
@@ -43,3 +50,62 @@ class Table:
     @property
     def filename(self):
         return Table.relative_path % self.name
+
+    def _check_column_types(self):
+        with open(self.filename, 'r') as f:
+            cols = f.readline()[:-1].split(',')
+            i = 0
+            p = f.tell()
+            size = os.path.getsize(self.filename)
+            while i < 3 and p < size:
+                col_vals = TableProjector.read_col_vals_multiline(p, f)
+                for col, val in zip(cols, col_vals):
+                    if col not in self._column_types:
+                        parsed = self.parse_value(val)
+                        self._column_types[col] = type(parsed)
+                    else:
+                        assert self._column_types[col] != self.parse_value(val), "Values in a column must " \
+                                                                                 "have the same type. "
+                i += 1
+
+    def parse_value_for_column(self, value, column_name):
+        t = self._column_types[column_name]
+        if t is int:
+            return int(value)
+        elif t is float:
+            return float(value)
+        elif t is bool:
+            if value == 'True' or value == 'true':
+                return True
+            elif value == 'False' or value == 'false':
+                return False
+        elif t is datetime.datetime:
+            return date_parse(value)
+        elif t is str:
+            return value
+
+        assert False, "All values should have been parsed."
+
+    def parse_value(self, val):
+        try:
+            return int(val)
+        except ValueError:
+            pass
+
+        try:
+            return float(val)
+        except ValueError:
+            pass
+
+        if val == 'True' or val == 'true':
+            return True
+        elif val == 'False' or val == 'false':
+            return False
+
+        try:
+            return date_parse(val)
+        except ValueError:
+            pass
+
+        # Treat the right as TEXT
+        return val

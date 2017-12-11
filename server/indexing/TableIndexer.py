@@ -1,8 +1,8 @@
 import os
 import pickle
-from dateutil.parser import parse as date_parse
 
 from server.indexing import BTreeIndex
+from server.query.TableProjector import TableProjector
 
 
 class TableIndexer:
@@ -46,7 +46,7 @@ class TableIndexer:
             start_pos = f.tell()
             for j, col in enumerate(column_names):
                 f.seek(start_pos)
-                index = self._index_class.make(self._value_location_generator(f, size, j))
+                index = self._index_class.make(self._value_location_generator(f, size, j), self._table, col)
                 self._column_indices[col] = index
                 with open(self.path_for_column(col), 'wb') as g:
                     pickle.dump(index, g)
@@ -61,15 +61,10 @@ class TableIndexer:
             self._mem_locs = pickle.load(f)
 
     def _read_mem_locs(self):
-        self._mem_locs = []
-        with open(self.table.filename, 'rb') as f:
+        with open(self.table.filename, 'r') as f:
             size = os.path.getsize(self.table.filename)
-            f.readline()
-            self._mem_locs.append(f.tell())
-            while self._mem_locs[-1] < size:
-                f.readline()
-                self._mem_locs.append(f.tell())
-            del self._mem_locs[-1]
+            self._mem_locs = [col_loc for col_val, col_loc, rec_num in self._value_location_generator(f, size, 0)]
+
         with open(self.table.filename + "_mem_locs.pickle", 'wb') as f:
             pickle.dump(self._mem_locs, f, pickle.HIGHEST_PROTOCOL)
 
@@ -78,7 +73,8 @@ class TableIndexer:
         i = 0
         while position < size:
             col_loc = position
-            col_val = f.readline().split(',')[j]
+            col_vals = TableProjector.read_col_vals_multiline(col_loc, f)
+            col_val = col_vals[j]
             position = f.tell()
             yield col_val, col_loc, i
             i += 1
@@ -94,28 +90,3 @@ class TableIndexer:
     @property
     def mem_locs(self):
         return self._mem_locs
-
-    @staticmethod
-    def parse_value(val):
-        try:
-            return int(val)
-        except ValueError:
-            pass
-
-        try:
-            return float(val)
-        except ValueError:
-            pass
-
-        if val == 'True' or val == 'true':
-            return True
-        elif val == 'False' or val == 'false':
-            return False
-
-        try:
-            return date_parse(val)
-        except ValueError:
-            pass
-
-        # Treat the right as TEXT
-        return val

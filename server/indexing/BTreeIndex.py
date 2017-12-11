@@ -3,19 +3,20 @@ import sys
 
 from server.data_structures.btree.btree import BTree
 
-from server.indexing import TableIndexer
 
-sys.setrecursionlimit(10000)
+sys.setrecursionlimit(100000)
 
 
 class BTreeIndex:
 
-    def __init__(self, initial_pairs, block_size=10):
+    def __init__(self, initial_pairs, block_size=20):
         # Initialize the BTree index with 3 unique key-value pairs
         self.btree = BTree(block_size, initial_pairs)
 
     @staticmethod
-    def make(pair_generator):
+    def make(pair_generator, table, column_name):
+        print("Making index for %s.%s" % (table.name, column_name))
+
         initial_pairs = {}
 
         # Get 3 initial values
@@ -24,7 +25,7 @@ class BTreeIndex:
                 k, v, _ = next(pair_generator)
             except StopIteration:
                 assert False, "There are not enough unique values to index this row."
-            k = TableIndexer.TableIndexer.parse_value(k)
+            k = table.parse_value_for_column(k, column_name)
             if k in initial_pairs:
                 initial_pairs[k].add(v)
             else:
@@ -36,7 +37,7 @@ class BTreeIndex:
         # Insert the rest of the items in the generator
         try:
             for k, v, _ in pair_generator:
-                k = TableIndexer.TableIndexer.parse_value(k)
+                k = table.parse_value_for_column(k, column_name)
                 lookup = index.btree[k]
                 if lookup:
                     lookup.add(v)

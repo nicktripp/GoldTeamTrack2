@@ -85,7 +85,8 @@ class Comparison:
             self._right = self._right[1:-1]
 
         # Try to parse as float, date, int, boolean, and text
-        return TableIndexer.parse_value(self.right)
+        left_col = self.left_column(tables)
+        return left_col.table.parse_value_for_column(self.right, left_col.name)
 
     def compares_constant(self, tables):
         return not isinstance(self.right_column_or_constant(tables), Column)

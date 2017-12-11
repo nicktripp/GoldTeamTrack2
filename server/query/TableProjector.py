@@ -63,10 +63,11 @@ class TableProjector:
                         size = os.path.getsize(self._tables[i].filename)
                         new_rows = []
                         while loc < size:
-                            # Read the row and project
-                            table_files[i].seek(loc)
-                            row_str = table_files[i].readline()[:-1]
-                            col_vals = row_str.split(',')
+                            # Read the row while escaping text values that span multiple lines
+                            col_vals = self.read_col_vals_multiline(loc, table_files[i])
+                            assert len(col_vals) == len(self._tables[i].column_index)
+
+                            # Project the column values
                             projection = ','.join(col_vals[i] for i in cols)
                             for row in rows:
                                 new_rows.append(row + [projection])
@@ -75,10 +76,11 @@ class TableProjector:
                             loc = table_files[i].tell()
                         rows = new_rows
                     else:
-                        # Read the row and project
-                        table_files[i].seek(loc)
-                        row_str = table_files[i].readline()[:-1]
-                        col_vals = row_str.split(',')
+                        # Read the row while escaping text values that span multiple lines
+                        col_vals = self.read_col_vals_multiline(loc, table_files[i])
+                        assert len(col_vals) == len(self._tables[i].column_index)
+
+                        # Project the columns
                         projection = ','.join(col_vals[i] for i in cols)
                         for row in rows:
                             row.append(projection)
@@ -103,3 +105,83 @@ class TableProjector:
             output = list(set(output))
 
         return output
+
+    @staticmethod
+    def read_col_vals_multiline(loc, table_file):
+        col_vals = []
+        table_file.seek(loc)
+        multiline = False
+        start = True
+        while start or multiline:
+            start = False
+            row_str = table_file.readline()
+            row_split = row_str.split(',')
+            for j, col_val in enumerate(row_split):
+                # Handle the beginning of escaped text column value
+                if TableProjector.opens_multiline(col_val):
+                    if multiline:
+                        # We are already in an escaped value, keep adding to it
+                        col_vals[-1] += "," + col_val
+                    else:
+                        # We just escaped a value, add the beginning of the escape to the col_vals
+                        multiline = True
+                        col_vals.append(col_val)
+
+                    # If the escaped text ends in the same col_val, it isn't multiline
+                    # we are done
+                    if TableProjector.closes_multiline(col_val):
+                        multiline = False
+
+                    continue
+
+                # Handle closing a multiline text value on a different line
+                if TableProjector.closes_multiline(col_val):
+                    col_vals[-1] += "," + col_val
+                    multiline = False
+
+                # Handle adding more to multiline without closing it
+                elif multiline:
+                    if j != 0:
+                        col_vals[-1] += ","
+                    col_vals[-1] += col_val
+
+                # Handle reading normal column values
+                else:
+                    # The last split column value has an extra \n character
+                    if j == len(row_split) - 1 and not multiline:
+                        col_vals.append(col_val[:-1])
+                    else:
+                        col_vals.append(col_val)
+        return col_vals
+
+    @staticmethod
+    def opens_multiline(s):
+        if len(s) == 0:
+            return False
+        if s[0] != "\"":
+            return False
+        if s[0] == "\"":
+            q = 0
+            for c in s:
+                if c == "\"":
+                    q += 1
+                else:
+                    break
+            # Odd number of quotes starts a multiline
+            return q % 2 == 1
+
+    @staticmethod
+    def closes_multiline(s):
+        if len(s) == 0:
+            return False
+        if s[-1] != "\"":
+            return False
+        if s[-1] == "\"":
+            q = 0
+            for c in reversed(s):
+                if c == "\"":
+                    q += 1
+                else:
+                    break
+            # Odd number of quotes stops a multiline
+            return q % 2 == 1
