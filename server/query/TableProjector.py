@@ -118,7 +118,7 @@ class TableProjector:
             row_split = row_str.split(',')
             for j, col_val in enumerate(row_split):
                 # Handle the beginning of escaped text column value
-                if TableProjector.opens_multiline(col_val):
+                if TableProjector.opens_multiline(col_val, multiline):
                     if multiline:
                         # We are already in an escaped value, keep adding to it
                         col_vals[-1] += "," + col_val
@@ -129,34 +129,33 @@ class TableProjector:
 
                     # If the escaped text ends in the same col_val, it isn't multiline
                     # we are done
-                    if TableProjector.closes_multiline(col_val):
+                    if TableProjector.closes_multiline(col_val, True):
                         multiline = False
 
-                    continue
-
-                # Handle closing a multiline text value on a different line
-                if TableProjector.closes_multiline(col_val):
-                    col_vals[-1] += "," + col_val
-                    multiline = False
-
-                # Handle adding more to multiline without closing it
-                elif multiline:
-                    if j != 0:
-                        col_vals[-1] += ","
-                    col_vals[-1] += col_val
-
-                # Handle reading normal column values
                 else:
-                    # The last split column value has an extra \n character
-                    if j == len(row_split) - 1 and not multiline:
-                        col_vals.append(col_val[:-1])
+                    # Handle closing a multiline text value on a different line or over col_val values
+                    if TableProjector.closes_multiline(col_val, False):
+                        col_vals[-1] += "," + col_val
+                        multiline = False
+
+                    # Handle adding more to multiline without closing it
+                    elif multiline:
+                        if j != 0:
+                            col_vals[-1] += ","
+                        col_vals[-1] += col_val
+
+                    # Handle reading normal column values
                     else:
-                        col_vals.append(col_val)
+                        # The last split column value has an extra \n character
+                        if j == len(row_split) - 1 and not multiline:
+                            col_vals.append(col_val[:-1])
+                        else:
+                            col_vals.append(col_val)
         return col_vals
 
     @staticmethod
-    def opens_multiline(s):
-        if len(s) == 0:
+    def opens_multiline(s, already_opened):
+        if len(s) == 0 or already_opened:
             return False
         if s[0] != "\"":
             return False
@@ -171,14 +170,12 @@ class TableProjector:
             return q % 2 == 1
 
     @staticmethod
-    def closes_multiline(s):
-        if len(s) == 0:
+    def closes_multiline(s, just_opened):
+        if len(s) == 0 or (s == "\"" and just_opened):
             return False
         if s[-1] != "\"":
             return False
         if s[-1] == "\"":
-            if len(s) == 1:
-                return False
             q = 0
             for c in reversed(s):
                 if c == "\"":

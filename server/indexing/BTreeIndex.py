@@ -29,6 +29,7 @@ class BTreeIndex:
                 k = table.parse_value_for_column(k, column_name)
             except ValueError:
                 print("Error parsing at location %s" % v)
+                continue
             if k in initial_pairs:
                 initial_pairs[k].add(v)
             else:
@@ -44,6 +45,7 @@ class BTreeIndex:
                     k = table.parse_value_for_column(k, column_name)
                 except ValueError:
                     print("Error parsing at location %s" % v)
+                    continue
                 lookup = index.btree[k]
                 if lookup:
                     lookup.add(v)

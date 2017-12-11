@@ -24,6 +24,7 @@ class Hangman:
 
         try:
             t0 = time.time()
+            print("Executing query :: ", query)
 
             # Parse the query
             parser = Parser(query)

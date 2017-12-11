@@ -57,8 +57,9 @@ class Table:
             i = 0
             p = f.tell()
             size = os.path.getsize(self.filename)
-            while i < 5 and p < size:
+            while i < 3 and p < size:
                 col_vals = TableProjector.read_col_vals_multiline(p, f)
+                p = f.tell()
                 for col, val in zip(cols, col_vals):
                     if val == "":
                         # Wait for the value to be filled out
@@ -95,9 +96,9 @@ class Table:
         elif t is str:
             return value
         else:
-            print(t)
+            return None
 
-        assert False, "All values should have been parsed."
+        assert False, "All values should have been parsed. %s was not parsed as a %s for %s" % (value, t, column_name)
 
     def parse_value(self, val):
         try:
