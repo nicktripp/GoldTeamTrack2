@@ -3,7 +3,7 @@ from server.data_structures.bitmap.bitmap import Bitmap
 from server.data_structures.btree.btree import BTree
 from server.indexing import TableIndexer
 from server.indexing.BTreeIndex import BTreeIndex
-
+import re
 
 class BitmapIndex:
 
@@ -33,7 +33,7 @@ class BitmapIndex:
                 initial_bitstring_pairs[k] = new_bitstring_index
 
             assert k not in initial_record_pairs, "No duplicate record numbers!"
-            initial_record_pairs[k] = mem_location
+            initial_record_pairs[record_num] = mem_location
 
 
         # Create a BTreeIndex with the pairs
@@ -51,7 +51,7 @@ class BitmapIndex:
                     new_index = Bitmap_Entry(k, record_num)
                     index.bitstringTree[k] = new_index
 
-                assert record_num not in index.recordsTree
+                assert record_num not in index.recordsTree, "Duplicate Record Numbers Found!"
                 index.recordsTree[record_num] = mem_location
 
         except StopIteration:
@@ -71,7 +71,7 @@ class BitmapIndex:
         return str(self.bitstringTree)
 
 
-    def op(self, key, comparison):
+    def op(self, key, comparison, negated=False):
         """
         The key will be compared against all of the keys in the index with the provided comparison
 
@@ -80,20 +80,22 @@ class BitmapIndex:
         :param comparison:
         :return: set of row locations in file
         """
-        if comparison == '=':
+
+
+        if (comparison == '=' and not negated) or (comparison == '<>' and negated):
             return self.equal(key)
-        elif comparison == '<':
+        elif (comparison == '<' and not negated) or (comparison == '>=' and negated):
             return self.lessThan(key)
-        elif comparison == '<=':
+        elif (comparison == '<=' and not negated) or (comparison == '>' and negated):
             return self.lessThanOrEqual(key)
-        elif comparison == '<>':
+        elif (comparison == '<>' and not negated) or (comparison == '=' and negated):
             return self.notEqual(key)
-        elif comparison == '>':
+        elif (comparison == '>' and not negated) or (comparison == '<=' and negated):
             return self.greaterThan(key)
-        elif comparison == '>=':
+        elif (comparison == '>=' and not negated) or (comparison == '<' and negated):
             return self.greaterThanOrEqual(key)
         elif comparison == 'LIKE':
-            return self.like(key)
+            return self.like(key, negated)
         return None
 
     def equal(self, key):
@@ -106,90 +108,156 @@ class BitmapIndex:
         return ret
 
     def notEqual(self, key):
-        val, key_block = self.btree.get_with_block(key)
-        val, block = self.btree.get_with_block(self.btree.smallest)
-        ret = {}
-        while block != key_block:
-            for i in range(len(block.keys)):
-                ret[block.keys[i]] = block.values[i]
-            block = block.next_leaf
 
-        for i in range(len(block.keys)):
-            if key != block.keys[i]:
-                ret[block.keys[i]] = block.values[i]
-        block = block.next_leaf
+        values = set(self.bitstringTree[key].populate_record_list())
+        ret = []
 
-        while block is not None:
-            for i in range(len(block.keys)):
-                ret[block.keys[i]] = block.values[i]
-            block = block.next_leaf
+        for i in range(self.recordsTree.n):
+            if i not in values:
+                ret.append(self.recordsTree[i])
+
         return ret
 
     def lessThan(self, key):
-        val, stop_block = self.btree.get_with_block(key)
-        val, block = self.btree.get_with_block(self.btree.smallest)
-        ret = {}
+        val, stop_block = self.bitstringTree.get_with_block(key)
+        val, block = self.bitstringTree.get_with_block(self.bitstringTree.smallest)
+        ret = []
+
         # Everything is less than until we get to the block that holds the matching key
+        agg_bitstring = "0" * self.recordsTree.n
+
         while stop_block != block:
             for i in range(len(block.keys)):
-                ret[block.keys[i]] = block.values[i]
+                new_bs = block.values[i].decode_compressed_string(self.recordsTree.n)
+                agg_bitstring = self.do_or(agg_bitstring, new_bs)
+
             block = block.next_leaf
 
-        # This is the only block that does a comparison
-        for i in range(len(block.keys)):
-            if key <= stop_block.keys[i]:
-                break
-            ret[block.keys[i]] = block.values[i]
+        if stop_block == block:
+            for i in range(len(block.keys)):
+                if(block.keys[i] < key):
+                    new_bs = block.values[i].decode_compressed_string(self.recordsTree.n)
+                    agg_bitstring = self.do_or(agg_bitstring, new_bs)
+
+        # Iterate through the bitstring
+        for i in range(len(agg_bitstring)):
+            if(agg_bitstring[i] == '1'):
+                ret.append(self.recordsTree[i])
+
         return ret
 
+
     def lessThanOrEqual(self, key):
-        val, stop_block = self.btree.get_with_block(key)
-        val, block = self.btree.get_with_block(self.btree.smallest)
-        ret = {}
+        val, stop_block = self.bitstringTree.get_with_block(key)
+        val, block = self.bitstringTree.get_with_block(self.bitstringTree.smallest)
+
+        ret = []
         # Everything is less than until we get to the block that holds the matching key
+        agg_bitstring = "0" * self.recordsTree.n
+
         while stop_block != block:
             for i in range(len(block.keys)):
-                ret[block.keys[i]] = block.values[i]
+                new_bs = block.values[i].decode_compressed_string(self.recordsTree.n)
+                agg_bitstring = self.do_or(agg_bitstring, new_bs)
             block = block.next_leaf
 
-        # This is the only block that does a comparison
-        for i in range(len(block.keys)):
-            if key < stop_block.keys[i]:
-                break
-            ret[block.keys[i]] = block.values[i]
+        if stop_block == block:
+            for i in range(len(block.keys)):
+                if(block.keys[i] <= key):
+                    new_bs = block.values[i].decode_compressed_string(self.recordsTree.n)
+                    agg_bitstring = self.do_or(agg_bitstring, new_bs)
+
+        # Iterate through the bitstring
+        for i in range(len(agg_bitstring)):
+            if (agg_bitstring[i] == '1'):
+                ret.append(self.recordsTree[i])
         return ret
 
     def greaterThan(self, key):
-        val, block = self.btree.get_with_block(key)
-        ret = {}
+        val, block = self.bitstringTree.get_with_block(key)
+        ret = []
+
+        # Everything is less than until we get to the block that holds the matching key
+        agg_bitstring = "0" * self.recordsTree.n
+
+        # block != null maybe?
         while True:
             for i in range(len(block.keys)):
                 if block.keys[i] > key:
-                    ret[block.keys[i]] = block.values[i]
+                    new_bs = block.values[i].decode_compressed_string(self.recordsTree.n)
+                    agg_bitstring = self.do_or(agg_bitstring, new_bs)
             if block.next_leaf is None:
-                return ret
+                break
             block = block.next_leaf
 
+        # Iterate through the bitstring
+        for i in range(len(agg_bitstring)):
+            if (agg_bitstring[i] == '1'):
+                ret.append(self.recordsTree[i])
+
+        return ret
+
+
     def greaterThanOrEqual(self, key):
-        val, block = self.btree.get_with_block(key)
-        ret = {}
+        val, block = self.bitstringTree.get_with_block(key)
+        ret = []
+        agg_bitstring = "0" * self.recordsTree.n
+
         while True:
             for i in range(len(block.keys)):
                 if block.keys[i] >= key:
-                    ret[block.keys[i]] = block.values[i]
+                    new_bs = block.values[i].decode_compressed_string(self.recordsTree.n)
+                    agg_bitstring = self.do_or(agg_bitstring, new_bs)
+
             if block.next_leaf is None:
-                return ret
+                break
             block = block.next_leaf
 
+        # Iterate through the bitstring
+        for i in range(len(agg_bitstring)):
+            if (agg_bitstring[i] == '1'):
+                ret.append(self.recordsTree[i])
+
+        return ret
+
     def like(self, key):
-        val, block = self.btree.get_with_block(self.btree.smallest)
-        ret = {}
+        val, block = self.bitstringTree.get_with_block(self.bitstringTree.smallest)
+        ret = []
+        agg_bitstring = "0" * self.recordsTree.n
+        pattern = re.compile(key.replace("%", ".*"))
+
         while True:
             for i in range(len(block.keys)):
-                pattern = re.compile(key.replace("%", ".*"))
                 check = pattern.match(block.keys[i])
-                if check:
-                    ret[block.keys[i]] = block.values[i]
+                if check is not None:
+                    new_bs = block.values[i].decode_compressed_string(self.recordsTree.n)
+                    agg_bitstring = self.do_or(agg_bitstring, new_bs)
+
             if block.next_leaf is None:
-                return ret
+                break
             block = block.next_leaf
+
+        # Iterate through the bitstring
+        for i in range(len(agg_bitstring)):
+            if (agg_bitstring[i] == '1'):
+                ret.append(self.recordsTree[i])
+
+        return ret
+
+
+    def do_and(self, bitstring_1, bitstring_2):
+        zipped = zip(bitstring_1, bitstring_2)
+        new_string = ""
+        for one, two in zipped:
+            new_string += str(int(one) & int(two))
+
+        return new_string
+
+    def do_or(self, bitstring_1, bitstring_2):
+        zipped = zip(bitstring_1, bitstring_2)
+        new_string = ""
+        for one, two in zipped:
+            new_string += (str(int(one) | int(two)))
+
+        return new_string
+
