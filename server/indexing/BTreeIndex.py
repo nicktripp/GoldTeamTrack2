@@ -27,16 +27,16 @@ class BTreeIndex:
 
             # Parse the column value as one of the supported data types
             try:
-                pk = table.parse_value_for_column(k, column_name)
+                k = table.parse_value_for_column(k, column_name)
             except ValueError:
                 print("Error parsing at location %s for %s in %s" % (v, k, column_name))
                 assert False
 
             # Accumulate 3 unique keys for the initial pairs
-            if pk in initial_pairs:
-                initial_pairs[pk].add(v)
+            if k in initial_pairs:
+                initial_pairs[k].add(v)
             else:
-                initial_pairs[pk] = {v}
+                initial_pairs[k] = {v}
 
         # Create a BTreeIndex with the pairs
         index = BTreeIndex(initial_pairs, sparse)
@@ -45,15 +45,15 @@ class BTreeIndex:
         try:
             for k, v, _ in pair_generator:
                 try:
-                    pk = table.parse_value_for_column(k, column_name)
+                    k = table.parse_value_for_column(k, column_name)
                 except ValueError:
                     print("Error parsing at location %s for %s in %s" % (v, k, column_name))
                     assert False
-                lookup = index.btree[pk]
+                lookup = index.btree[k]
                 if lookup:
                     lookup.add(v)
                 else:
-                    index.btree[pk] = {v}
+                    index.btree[k] = {v}
         except StopIteration:
             # There were exactly 3 unique values
             # All of the rows were consumed before we got here
