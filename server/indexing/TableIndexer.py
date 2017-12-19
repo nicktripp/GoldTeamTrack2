@@ -40,7 +40,7 @@ class TableIndexer:
                 self.column_indices[column] = pickle.load(f)
 
     def _generate_indices(self):
-        with open(self._table.filename, 'r') as f:
+        with open(self._table.filename, encoding='utf8') as f:
             size = os.path.getsize(self._table.filename)
             column_names = f.readline()[:-1].split(',')
             start_pos = f.tell()
@@ -61,7 +61,7 @@ class TableIndexer:
             self._mem_locs = pickle.load(f)
 
     def _read_mem_locs(self):
-        with open(self.table.filename, 'r') as f:
+        with open(self.table.filename, encoding='utf8') as f:
             size = os.path.getsize(self.table.filename)
             self._mem_locs = [col_loc for col_val, col_loc, rec_num in self._value_location_generator(f, size, 0)]
 

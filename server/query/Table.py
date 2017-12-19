@@ -14,7 +14,7 @@ class Table:
         assert os.path.exists(self.filename), "The table (%s) must exist." % self.filename
 
         # Fill the column index
-        with open(self.filename, 'r') as f:
+        with open(self.filename, 'r', encoding='utf8') as f:
             columns = f.readline()[:-1].split(',')
             self._column_index = {col: i for i, col in enumerate(columns)}
 
@@ -52,7 +52,7 @@ class Table:
         return Table.relative_path % self.name
 
     def _check_column_types(self):
-        with open(self.filename, 'r') as f:
+        with open(self.filename, encoding='utf8') as f:
             cols = f.readline()[:-1].split(',')
             i = 0
             p = f.tell()

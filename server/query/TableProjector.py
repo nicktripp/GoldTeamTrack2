@@ -34,7 +34,7 @@ class TableProjector:
         # Open the CSV tables
         table_files = []
         for i in range(len(self._tables)):
-            table_files.append(open(self._tables[i].filename, 'r'))
+            table_files.append(open(self._tables[i].filename, 'r', encoding='utf8'))
 
         # Iterate through the tuples
         table_projections = [{}] * len(self._tables)

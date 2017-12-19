@@ -24,20 +24,20 @@ if __name__ == "__main__":
           'u\'dinner\': False, u\'brunch\': False, u\'breakfast\': False}",,,False,,loud,,True,casual,,False,True,2.0,True,' \
           'True,True,,True,,9joPX1laPl3p6l_VfCQJFw,"Italian,Restaurants",Charlotte,,,,,,,,0,35.1569133,-80.7946407,' \
           'il Nido Ristorante,Sherwood Forest,28211,21,4.5,NC\n'
-    with open('./tmp.csv', 'w') as f:
+    with open('./tmp.csv', 'w', encoding='utf8') as f:
         f.write(row)
 
-    with open('./tmp.csv', 'r') as f:
+    with open('./tmp.csv', encoding='utf8') as f:
         output = TableProjector.read_col_vals_multiline(0, f)
         print(output)
 
     row = '"7215 Route Transcanadienne,",,,,,,,,,,,,False,,,,,,,,,,,,,,,,,,,,,,,,,,,,Nyvu02Pv5k0LCTIny4Hyew,' \
           '"Beauty & Spas,Cosmetics & Beauty Supply,Shopping",Montréal,,,,,,,,1,45.4906196784,-73.7060168136,' \
           'Entrepot l\'Oréal,Saint-Laurent,H4T 1A2,3,3.0,QC\n'
-    with open('./tmp.csv', 'w') as f:
+    with open('./tmp.csv', 'w', encoding='utf8') as f:
         f.write(row)
 
-    with open('./tmp.csv', 'r') as f:
+    with open('./tmp.csv', encoding='utf8') as f:
         output = TableProjector.read_col_vals_multiline(0, f)
         print(output)
 

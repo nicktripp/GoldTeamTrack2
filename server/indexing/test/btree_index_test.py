@@ -1,8 +1,6 @@
 from server.indexing.BTreeIndex import BTreeIndex
 import os
 
-from server.indexing.FileIndexer import FileIndexer
-
 if __name__ == "__main__":
     print("Testing B+ Tree Index Implementation")
 
@@ -16,7 +14,7 @@ if __name__ == "__main__":
 
     # FileIndexer('../../../', 'movies')
     movie_title_index = FileIndexer.get_indexer('../../../', 'movies', 'movie_title')
-    with open('../../../data/movies.csv', 'r') as f:
+    with open('../../../data/movies.csv', encoding='utf8') as f:
         for row_loc in movie_title_index.btree['Spider-Man 3']:
             f.seek(row_loc)
             assert f.readline() in results, "There are two Spider-Man 3 entries"
