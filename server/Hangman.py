@@ -5,7 +5,9 @@ from server.query.SQLParsingError import SQLParsingError
 from server.query.TableProjector import TableProjector
 import time
 from functools import wraps
+import sys
 
+sys.setrecursionlimit(1000000)
 
 def timeit(timer_tag):
     def func_wrapper(func):

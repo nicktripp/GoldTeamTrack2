@@ -7,25 +7,37 @@ class BTree:
     B+ Tree implementation
     """
 
-    def __init__(self, block_size, initial_values):
-        # Initialize BTree with a root and a left and right leaf
+    def __init__(self, block_size, initial_values, sparse):
         self.block_size = block_size
-        self.root = InternalBlock(block_size)
-        right = ExternalBlock(block_size)
-        left = ExternalBlock(block_size, right)
+        self.sparse = sparse
+        if not sparse:
+            # Initialize BTree with a root and a left and right leaf
+            self.root = InternalBlock(block_size)
+            right = ExternalBlock(block_size)
+            left = ExternalBlock(block_size, right)
 
-        # Use 3 values to initialize the tree
-        assert (len(initial_values) >= 3)
-        sorted_keys = sorted([k for k in initial_values][:3])
-        left.keys = [sorted_keys[0]]
-        left.values = [initial_values[sorted_keys[0]]]
-        right.keys = [sorted_keys[1], sorted_keys[2]]
-        right.values = [initial_values[sorted_keys[1]], initial_values[sorted_keys[2]]]
-        self.root.keys = [sorted_keys[1]]
-        self.root.values = [left, right]
-        self.smallest = sorted_keys[0]
+            # Use 3 values to initialize the tree
+            assert (len(initial_values) >= 3)
+            sorted_keys = sorted([k for k in initial_values][:3])
+            left.keys = [sorted_keys[0]]
+            left.values = [initial_values[sorted_keys[0]]]
+            right.keys = [sorted_keys[1], sorted_keys[2]]
+            right.values = [initial_values[sorted_keys[1]], initial_values[sorted_keys[2]]]
+            self.root.keys = [sorted_keys[1]]
+            self.root.values = [left, right]
+            self.smallest = sorted_keys[0]
 
-        self.n = 3
+            self.n = 3
+        else:
+            assert len(initial_values) == 2 or len(initial_values) == 1, "Sparse BTrees should have less than 1 or 2 " \
+                                                                         "keys"
+            # Allow boolean indexes
+            self.root = ExternalBlock(block_size)
+
+            # Put the initial values in a leaf node root
+            self.root.keys = list(sorted(initial_values))
+            self.root.values = list(initial_values[k] for k in self.root.keys)
+            self.smallest = self.root.keys[0]
 
     def __repr__(self):
         return str(self.root)
@@ -43,6 +55,7 @@ class BTree:
         """
         Support key-value insertion with brackets
         """
+        assert not self.sparse, "You may not insert into a sparse BTree"
         insert_result = self.root.insert_recurse(key, value)
 
         if insert_result[0]:

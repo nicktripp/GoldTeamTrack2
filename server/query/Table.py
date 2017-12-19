@@ -85,6 +85,7 @@ class Table:
                 return 0.0
             return float(value)
         elif t is bool:
+            value = value.strip()
             if value == "":
                 return False
             if value == 'True' or value == 'true':

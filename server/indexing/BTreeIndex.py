@@ -1,17 +1,13 @@
 import re
-import sys
 
 from server.data_structures.btree.btree import BTree
 
 
-sys.setrecursionlimit(100000)
-
-
 class BTreeIndex:
 
-    def __init__(self, initial_pairs, block_size=20):
+    def __init__(self, initial_pairs, sparse, block_size=100):
         # Initialize the BTree index with 3 unique key-value pairs
-        self.btree = BTree(block_size, initial_pairs)
+        self.btree = BTree(block_size, initial_pairs, sparse)
 
     @staticmethod
     def make(pair_generator, table, column_name):
@@ -20,37 +16,44 @@ class BTreeIndex:
         initial_pairs = {}
 
         # Get 3 initial values
+        sparse = False
         while len(initial_pairs) < 3:
+            # Iterate through all key pairs until 3 unique values have been found
             try:
                 k, v, _ = next(pair_generator)
             except StopIteration:
-                assert False, "There are not enough unique values to index this row."
+                sparse = True
+                break
+
+            # Parse the column value as one of the supported data types
             try:
-                k = table.parse_value_for_column(k, column_name)
+                pk = table.parse_value_for_column(k, column_name)
             except ValueError:
-                print("Error parsing at location %s" % v)
-                continue
-            if k in initial_pairs:
-                initial_pairs[k].add(v)
+                print("Error parsing at location %s for %s in %s" % (v, k, column_name))
+                assert False
+
+            # Accumulate 3 unique keys for the initial pairs
+            if pk in initial_pairs:
+                initial_pairs[pk].add(v)
             else:
-                initial_pairs[k] = {v}
+                initial_pairs[pk] = {v}
 
         # Create a BTreeIndex with the pairs
-        index = BTreeIndex(initial_pairs)
+        index = BTreeIndex(initial_pairs, sparse)
 
         # Insert the rest of the items in the generator
         try:
             for k, v, _ in pair_generator:
                 try:
-                    k = table.parse_value_for_column(k, column_name)
+                    pk = table.parse_value_for_column(k, column_name)
                 except ValueError:
-                    print("Error parsing at location %s" % v)
-                    continue
-                lookup = index.btree[k]
+                    print("Error parsing at location %s for %s in %s" % (v, k, column_name))
+                    assert False
+                lookup = index.btree[pk]
                 if lookup:
                     lookup.add(v)
                 else:
-                    index.btree[k] = {v}
+                    index.btree[pk] = {v}
         except StopIteration:
             # There were exactly 3 unique values
             # All of the rows were consumed before we got here
