@@ -13,6 +13,9 @@ class Column:
             return self.table == other.table and self.name == other.name
         return False
 
+    def __hash__(self):
+        return hash(repr(self))
+
     def __repr__(self):
         if self._table.nickname is None:
             return self._table.name + "." + self._name

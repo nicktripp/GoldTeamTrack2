@@ -11,7 +11,7 @@ class QueryFacade:
     We will hide the table querying interface behind this class
     """
 
-    def __init__(self, tables):
+    def __init__(self, tables, condition_columns):
         """
         Data sources are supplied by the QueryOptimizer
         :param tables:
@@ -19,7 +19,8 @@ class QueryFacade:
         self._tables = tables
         self._table_indices = {}
         for tbl in self._tables:
-            self._table_indices[repr(tbl)] = TableIndexer(tbl)
+            tbl_cols = [col for col in condition_columns if col.table == tbl]
+            self._table_indices[repr(tbl)] = TableIndexer(tbl, tbl_cols)
 
     @staticmethod
     def is_query_indexed(tbls):
@@ -86,8 +87,6 @@ class QueryFacade:
         else:
             # Handle queries with conditions
             return self.eval_conditions(conds)
-
-        assert False, 'Unreachable Code'
 
     def index_for_column(self, col):
         tbl = col.table

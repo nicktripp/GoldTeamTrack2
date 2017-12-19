@@ -8,16 +8,16 @@ from server.query.TableProjector import TableProjector
 class TableIndexer:
     relative_path = "./data/"
 
-    def __init__(self, table, index_class=BTreeIndex.BTreeIndex):
+    def __init__(self, table, cols_to_load, index_class=BTreeIndex.BTreeIndex):
         self._table = table
         self._index_class = index_class
         self._column_indices = {}
 
         # load or generate indices over the column
-        if self._all_indices_exist():
-            self._load_indices()
+        if self._all_indices_exist(cols_to_load):
+            self._load_indices(cols_to_load)
         else:
-            self._generate_indices()
+            self._generate_indices(cols_to_load)
 
         # load or generate the memory locations
         if self._all_mem_locs_exist():
@@ -28,23 +28,27 @@ class TableIndexer:
     def path_for_column(self, col_name):
         return TableIndexer.relative_path + self._table.name + "_" + col_name + ".idx"
 
-    def _all_indices_exist(self):
-        for column in self._table.column_index:
-            if not os.path.exists(self.path_for_column(column)):
+    def _all_indices_exist(self, cols_to_load):
+        for column in cols_to_load:
+            if not os.path.exists(self.path_for_column(column.name)):
                 return False
         return True
 
-    def _load_indices(self):
-        for column in self._table.column_index:
+    def _load_indices(self, cols_to_load):
+        for column in cols_to_load:
+            column = column.name
             with open(self.path_for_column(column), 'rb') as f:
                 self.column_indices[column] = pickle.load(f)
 
-    def _generate_indices(self):
+    def _generate_indices(self, cols_to_load):
         with open(self._table.filename, encoding='utf8') as f:
             size = os.path.getsize(self._table.filename)
             column_names = f.readline()[:-1].split(',')
+            to_load = set([c.name for c in cols_to_load])
             start_pos = f.tell()
             for j, col in enumerate(column_names):
+                if os.path.exists(self.path_for_column(col)) or col not in to_load:
+                    continue
                 f.seek(start_pos)
                 index = self._index_class.make(self._value_location_generator(f, size, j), self._table, col)
                 self._column_indices[col] = index

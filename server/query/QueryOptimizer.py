@@ -1,3 +1,4 @@
+from server.query.Column import Column
 from server.query.Comparison import Comparison
 
 class QueryOptimizer:
@@ -19,6 +20,7 @@ class QueryOptimizer:
         self._tbls = tbls
         self._conds = conds
         self._exec_conds = None
+        self.required_cols = set()
         self._distinct = distinct
 
         self._compute_execution_conditions()
@@ -30,23 +32,35 @@ class QueryOptimizer:
             self._exec_conds = []
             return
 
-        not_flag = self._conds[0]
-        for and_group in self._conds[1]:
+        self._recurse_conditions(self._conds)
+
+        # TODO: actually do something
+        self._exec_conds = self._conds
+
+    def _recurse_conditions(self, conds):
+        not_flag = conds[0]
+        for and_group in conds[1]:
             and_not_flag = and_group[0]
             for cond in and_group[1]:
                 cond_not_flag = cond[0]
                 if isinstance(cond[1], Comparison):
                     # Condition in AND group
-                    pass
+
+                    # Collect the columns indexes needed
+                    left_col = cond[1].left_column(self._tbls)
+                    self.required_cols.add(left_col)
+
+                    right_column_or_constant = cond[1].right_column_or_constant(self._tbls)
+                    if isinstance(right_column_or_constant, Column):
+                        self.required_cols.add(right_column_or_constant)
+
                 elif isinstance(cond[1], list):
                     # Parenthesis of with new conditions
-                    # TODO: recurse
+                    self._recurse_conditions(cond)
                     pass
                 else:
                     assert False, "Conditions must be a Comparison or start over."
 
-        # TODO: actually do something
-        self._exec_conds = self._conds
 
     @property
     def execution_conditions(self):
