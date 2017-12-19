@@ -2,6 +2,7 @@ import datetime
 import os
 from dateutil.parser import parse as date_parse
 
+from server.query.NoneVal import NoneVal
 from server.query.TableProjector import TableProjector
 
 
@@ -57,7 +58,7 @@ class Table:
             i = 0
             p = f.tell()
             size = os.path.getsize(self.filename)
-            while i < 3 and p < size:
+            while i < 1000 and p < size:
                 col_vals = TableProjector.read_col_vals_multiline(p, f)
                 p = f.tell()
                 for col, val in zip(cols, col_vals):
@@ -67,7 +68,9 @@ class Table:
                     if col not in self._column_types:
                         parsed = self.parse_value(val)
                         self._column_types[col] = type(parsed)
-                    else:
+                    elif self._column_types[col] is not str and type(parsed) is str:
+                        self._column_types[col] = type(parsed)
+                    elif type(parsed) is not NoneVal:
                         assert self._column_types[col] != self.parse_value(val), "Values in a column must " \
                                                                                "have the same type. "
                 # Read several rows past once every  type has been seen once
@@ -78,26 +81,28 @@ class Table:
         t = self._column_types[column_name]
         if t is int:
             if value == "":
-                return 0
+                return NoneVal()
             return int(value)
         elif t is float:
             if value == "":
-                return 0.0
+                return NoneVal()
             return float(value)
         elif t is bool:
             value = value.strip()
             if value == "":
-                return False
+                return NoneVal()
             if value == 'True' or value == 'true':
                 return True
             elif value == 'False' or value == 'false':
                 return False
         elif t is datetime.datetime:
+            if value == "":
+                return NoneVal()
             return date_parse(value)
         elif t is str:
             return value
         else:
-            return None
+            return NoneVal()
 
         assert False, "All values should have been parsed. %s was not parsed as a %s for %s" % (value, t, column_name)
 

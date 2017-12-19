@@ -1,5 +1,6 @@
 from server.data_structures.btree.external_block import ExternalBlock
 from server.data_structures.btree.internal_block import InternalBlock
+from server.query.NoneVal import NoneVal
 
 
 class BTree:
@@ -10,6 +11,7 @@ class BTree:
     def __init__(self, block_size, initial_values, sparse):
         self.block_size = block_size
         self.sparse = sparse
+        self._null_values = set()
         if not sparse:
             # Initialize BTree with a root and a left and right leaf
             self.root = InternalBlock(block_size)
@@ -19,6 +21,7 @@ class BTree:
             # Use 3 values to initialize the tree
             assert (len(initial_values) >= 3)
             sorted_keys = sorted([k for k in initial_values][:3])
+            assert all(not isinstance(k, NoneVal) for k in sorted_keys)
             left.keys = [sorted_keys[0]]
             left.values = [initial_values[sorted_keys[0]]]
             right.keys = [sorted_keys[1], sorted_keys[2]]
@@ -35,9 +38,11 @@ class BTree:
             self.root = ExternalBlock(block_size)
 
             # Put the initial values in a leaf node root
+            assert all(not isinstance(k, NoneVal) for k in initial_values)
             self.root.keys = list(sorted(initial_values))
             self.root.values = list(initial_values[k] for k in self.root.keys)
             self.smallest = self.root.keys[0]
+            self.n = len(initial_values)
 
     def __repr__(self):
         return str(self.root)
@@ -49,6 +54,8 @@ class BTree:
         """
         Support key lookup with brackets
         """
+        if isinstance(key, NoneVal):
+            return self._null_values
         return self.root[key]
 
     def __setitem__(self, key, value):
@@ -56,6 +63,12 @@ class BTree:
         Support key-value insertion with brackets
         """
         assert not self.sparse, "You may not insert into a sparse BTree"
+        if isinstance(key, NoneVal):
+            if isinstance(value, set):
+                self._null_values |= value
+            else:
+                self._null_values.add(value)
+
         insert_result = self.root.insert_recurse(key, value)
 
         if insert_result[0]:
