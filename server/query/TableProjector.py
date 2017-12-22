@@ -1,7 +1,6 @@
 from collections import defaultdict
 
 import os
-import copy
 
 
 class TableProjector:
@@ -15,6 +14,8 @@ class TableProjector:
         self._tables = tables
         self._projection_columns = projection_columns
 
+        # TODO: support projection order of columns
+
         # Fill map of table to projection columns index in row of table
         self._columns_for_table = defaultdict(list)
         for col in self._projection_columns:
@@ -22,20 +23,6 @@ class TableProjector:
                 self._columns_for_table[repr(col.table)].extend(col.table.column_index.values())
             else:
                 self._columns_for_table[repr(col.table)].append(col.table.column_index[col.name])
-
-        # Support projection order of columns
-        self._out_col_idx_by_tbl_col_tup = {}
-        i = 0
-        for col in self._projection_columns:
-            t = self._tables.index(col.table)
-            if col.name == '*':
-                for j in range(len(col.table.column_index.values())):
-                    self._out_col_idx_by_tbl_col_tup[(t, j)] = i
-                    i += 1
-            else:
-                self._out_col_idx_by_tbl_col_tup[(t, col.table.column_index[col.name])] = i
-                i += 1
-        self._out_columns = [[] for _ in range(i)]
 
     def aggregate(self, row_tup_generator, distinct):
         """
@@ -52,89 +39,62 @@ class TableProjector:
         # Iterate through the tuples
         table_projections = [{} for _ in range(len(self._tables))]
         tables_to_read = None
+        output = []
+        for tup in row_tup_generator:
+            # Assert that they all read from the same number of tables
+            if tables_to_read is None:
+                tables_to_read = len(tup)
+            else:
+                assert len(tup) == tables_to_read, "All tuples must be of the same length for the TableProjector"
 
-        n = 0
-        for i in range(len(self._tables)):
-            for tup in row_tup_generator:
-                # Assert that they all read from the same number of tables
-                if tables_to_read is None:
-                    tables_to_read = len(tup)
-                else:
-                    assert len(tup) == tables_to_read, "All tuples must be of the same length for the TableProjector"
-
+            # Project the row for each table if it hasn't been done yet
+            rows = [[]]
+            for i in range(len(self._tables)):
                 cols = self._columns_for_table[repr(self._tables[i])]
                 if not cols:
                     continue
                 loc = tup[i]
                 if loc not in table_projections[i]:
                     if loc is None:
-                        # Keep a copy of what we already have in order to do the cartesian product
-                        prev_col_vals = copy.deepcopy(self._out_columns)
-                        n_ = n
-                        first_fill = True
-
                         # Read every row
                         table_files[i].seek(0)
                         table_files[i].readline()
                         loc = table_files[i].tell()
                         size = os.path.getsize(self._tables[i].filename)
+                        new_rows = []
                         while loc < size:
                             # Read the row while escaping text values that span multiple lines
                             col_vals = self.read_col_vals_multiline(loc, table_files[i])
                             assert len(col_vals) == len(self._tables[i].column_index)
 
                             # Project the column values
-                            projections = [col_vals[j] for j in cols]
-                            if n == 0:
-                                # If there are no previous portions of the row read
-                                # just read in all col_vals for this
-                                for j, col_val in zip(cols, projections):
-                                    col = self._out_col_idx_by_tbl_col_tup[(i, j)]
-                                    self._out_columns[col].append(col_val)
-                            else:
-                                if first_fill:
-                                    for j, col_val in zip(cols, projections):
-                                        col = self._out_col_idx_by_tbl_col_tup[(i, j)]
-                                        self._out_columns[col].append(col_val)
-                                    first_fill = False
-                                else:
-                                    for _ in range(n_):
-                                        for j, col in enumerate(prev_col_vals):
-                                            self._out_columns[j].extend(col)
-                                        for j, col_val in zip(cols, projections):
-                                            col = self._out_col_idx_by_tbl_col_tup[(i, j)]
-                                            self._out_columns[col].append(col_val)
-                                    n += n_
-
-
+                            projection = ','.join(col_vals[i] for i in cols)
+                            for row in rows:
+                                new_rows.append(row + [projection])
 
                             # Update loc and repeat
                             loc = table_files[i].tell()
+                        rows = new_rows
                     else:
                         # Read the row while escaping text values that span multiple lines
                         col_vals = self.read_col_vals_multiline(loc, table_files[i])
                         assert len(col_vals) == len(self._tables[i].column_index)
 
                         # Project the columns
-                        projections = [col_vals[j] for j in cols]
-                        for j, col_val in zip(cols, projections):
-                            col = self._out_col_idx_by_tbl_col_tup[(i, j)]
-                            self._out_columns[col].append(col_val)
-
-                        if i == 0:
-                            n += 1
+                        projection = ','.join(col_vals[i] for i in cols)
+                        for row in rows:
+                            row.append(projection)
 
                         # Save for later
-                        table_projections[i][loc] = projections
+                        table_projections[i][loc] = projection
                 else:
                     # Look up projection
-                    for j, col_val in zip(cols, table_projections[i][loc]):
-                        self._out_columns[self._out_col_idx_by_tbl_col_tup[(i, j)]].append(col_val)
+                    for row in rows:
+                        row.append(table_projections[i][loc])
 
-        output = []
-        n = len(self._out_columns[0])
-        for i in range(n):
-            output.append(','.join(self._out_columns[j][i] for j in range(len(self._out_columns))))
+            # Concatenate and append to the query result
+            for row in rows:
+                output.append(','.join(row))
 
         # Close the csv files
         for file in table_files:
