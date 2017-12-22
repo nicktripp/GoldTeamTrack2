@@ -5,6 +5,9 @@ from server.indexing import TableIndexer
 from server.indexing.BTreeIndex import BTreeIndex
 import re
 
+from server.query import Table
+
+
 class BitmapIndex:
 
     def __init__(self, initial_bitstring_pairs, initial_record_pairs, block_size = 4):
@@ -23,7 +26,7 @@ class BitmapIndex:
                 key, mem_location, record_num = next(pair_generator)
             except StopIteration:
                 assert False, "There are not enough unique values to index this row."
-            k = TableIndexer.TableIndexer.parse_value(key)
+            k = Table.Table.parse_value(key)
 
             new_bitstring_index = Bitmap_Entry(key,record_num)
 

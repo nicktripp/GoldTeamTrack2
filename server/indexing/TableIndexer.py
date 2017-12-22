@@ -8,7 +8,7 @@ from server.query.TableProjector import TableProjector
 class TableIndexer:
     relative_path = "./data/"
 
-    def __init__(self, table, cols_to_load, index_class=BTreeIndex.BTreeIndex):
+    def __init__(self, table, cols_to_load, index_class):
         self._table = table
         self._index_class = index_class
         self._column_indices = {}

@@ -38,7 +38,7 @@ class Hangman:
             optimizer = Hangman.optimize(parsed_query)
 
             # Execute the plan through the facade
-            facade = Hangman.prepare_facade(optimizer)
+            facade = Hangman.prepare_facade(optimizer, indexType)
             results = Hangman.execute_plan(facade, optimizer)
 
             # Aggregate the results
@@ -69,8 +69,8 @@ class Hangman:
 
     @staticmethod
     # @timeit("3. Preparing the QueryFacade")
-    def prepare_facade(optimizer):
-        facade = QueryFacade(optimizer.tables, optimizer.required_cols, optimizer.projection_columns)
+    def prepare_facade(optimizer, indexType):
+        facade = QueryFacade(optimizer.tables, optimizer.required_cols, optimizer.projection_columns, indexType)
         return facade
 
     @staticmethod
