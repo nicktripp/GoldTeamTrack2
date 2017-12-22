@@ -534,6 +534,7 @@ class Parser:
         # Convert the column string values to Column instances
         requires_prefix = len(self.tbls) == 1
         for i in range(len(self.cols)):
+            # THIS WILL BE A STRING OR A TOKEN
             col_str, op, number = self.cols[i]
             if col_str == '*':
                 if len(self.tbls) == 1:
@@ -542,8 +543,10 @@ class Parser:
                     raise SQLParsingError(sqlparse.format(stmt.value, keyword_case='upper'), "Ambiguous use of the * "
                                                                                              "selector.")
                 continue
-
-            table_column = col_str.value.split('.')
+            if(type(col_str) != str):
+                table_column = col_str.value.split('.')
+            else:
+                table_column = col_str.split('.')
             if len(table_column) < 2:
                 if requires_prefix:
                     self.cols[i] = Column(self.tbls[0], col_str)

@@ -12,7 +12,7 @@ if __name__ == "__main__":
     out = Hangman.execute(query, BitmapIndex)
     assert out == ['1', '5', '9']
 
-    query = "SELECT S.a, S.b FROM small S"
+    query = "SELECT S.b * 3 FROM small S WHERE S.c / 6 < 4"
     out = Hangman.execute(query, BitmapIndex)
     assert out == ['1,2', '5,6', '9,10']
 

@@ -17,11 +17,15 @@ class Comparison:
         if sqlparse_comparison is None:
             return
 
-        self._left = sqlparse_comparison.left.value
-        self._right = sqlparse_comparison.right.value
+        #self._left = sqlparse_comparison.left.value
+        self._left = sqlparse_comparison.left
+        #self._right = sqlparse_comparison.right.value
+        self._right = sqlparse_comparison.right
+
         for token in sqlparse_comparison.tokens:
             if token.ttype == sqlparse.tokens.Comparison:
                 self._operator = token.value
+
         assert self._operator is not None, "There must be a comparison operator"
         assert self._left is not None, "There must be a column on the left hand side of the comparison"
         assert self._right is not None, "There must be a column or constant on the right hand side of the comparison."
@@ -30,12 +34,12 @@ class Comparison:
         return "%s %s %s" % (self._left, self._operator, self._right)
 
     @property
-    def left(self):
-        return self._left
+    def left_string(self):
+        return self._left.value
 
     @property
-    def right(self):
-        return self._right
+    def right_string(self):
+        return self._right.value
 
     def left_column(self, tables):
         """
@@ -46,14 +50,23 @@ class Comparison:
         :param tables: list of tables
         :return: Column for left hand side of the comparison
         """
-        names = self.left.split('.')
+        print(type(self._left))
+        if(type(self._left) == sqlparse.sql.Operation):
+            real_name = self._left.tokens[0].value
+            l_op = self._left.tokens[2]
+            number = self._left.tokens[4]
+            names = real_name.split('.')
+        else:
+            names = self._left.value.split('.')
+
         assert len(names) == 2, "Invalid column name in comparison (%s)" % self.left
         table_name, column_name = names
         for table in tables:
             if table.name == table_name or table.nickname == table_name:
                 if column_name in table.column_index:
-                    return Column(table, column_name)
-
+                    return Column(table, column_name, l_op, number)
+        ## Local Variable referenced before assignment????
+        
         assert False, "No column was found for (%s)" % self.left
 
     def right_column(self, tables):
@@ -70,7 +83,10 @@ class Comparison:
         :param force_column: fails with error if the right hand side could not be parsed as a column
         :return: Column for right hand side or unboxed constant
         """
-        names = self.right.split('.')
+
+        if('.' in self._right.value):
+            names = self._right.value.split('.')
+        names = self._right.value.split('.')
         if len(names) == 2:
             table_name, column_name = names
             for table in tables:
@@ -81,12 +97,12 @@ class Comparison:
         assert not force_column, "Column was required on right hand side of Comparison"
 
         # The right must be constant remove the double quotes
-        if self.right[0] == "\"" and self.right[-1] == "\"":
-            self._right = self._right[1:-1]
+        if self._right.value[0] == "\"" and self._right.value[-1] == "\"":
+            self._right.value = self._right.value[1:-1]
 
         # Try to parse as float, date, int, boolean, and text
         left_col = self.left_column(tables)
-        return left_col.table.parse_value_for_column(self.right, left_col.name)
+        return left_col.table.parse_value_for_column(self._right.value, left_col.name)
 
     def compares_constant(self, tables):
         return not isinstance(self.right_column_or_constant(tables), Column)
