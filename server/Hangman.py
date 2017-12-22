@@ -17,7 +17,7 @@ class Hangman:
 
     @staticmethod
     @timeit("0. Starting Query")
-    def execute(query):
+    def execute(query, indexType):
         """
         Parses the SQL statements
         Creates an execution plan
