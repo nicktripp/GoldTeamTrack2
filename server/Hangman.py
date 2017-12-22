@@ -1,28 +1,14 @@
+import sys
+
+from server.Timer import timeit
+from server.indexing.BTreeIndex import BTreeIndex
 from server.query.Parser import Parser
 from server.query.QueryFacade import QueryFacade
 from server.query.QueryOptimizer import QueryOptimizer
 from server.query.SQLParsingError import SQLParsingError
 from server.query.TableProjector import TableProjector
-import time
-from functools import wraps
-import sys
 
 sys.setrecursionlimit(1000000)
-
-def timeit(timer_tag):
-    def func_wrapper(func):
-        @wraps(func)
-        def returned_wrapper(*args, **kwargs):
-            print(timer_tag)
-            t0 = time.time()
-            result = func(*args, **kwargs)
-            t1 = time.time()
-            print("Time Elapsed :: %f s" % (t1 - t0))
-            return result
-
-        return returned_wrapper
-
-    return func_wrapper
 
 
 class Hangman:
@@ -32,7 +18,7 @@ class Hangman:
 
     @staticmethod
     @timeit("0. Starting Query")
-    def execute(query):
+    def execute(query, indexType=BTreeIndex):
         """
         Parses the SQL statements
         Creates an execution plan
@@ -53,7 +39,7 @@ class Hangman:
             optimizer = Hangman.optimize(parsed_query)
 
             # Execute the plan through the facade
-            facade = Hangman.prepare_facade(optimizer)
+            facade = Hangman.prepare_facade(optimizer, indexType)
             results = Hangman.execute_plan(facade, optimizer)
 
             # Aggregate the results
@@ -65,37 +51,37 @@ class Hangman:
             # TODO: throw different errors and handle them
 
     @staticmethod
-    @timeit("6. Projecting the Results")
+    # @timeit("6. Projecting the Results")
     def project(optimizer, projector, results):
         query_output = projector.aggregate(results, optimizer.distinct)
         return query_output
 
     @staticmethod
-    @timeit("5. Preparing the Projector")
+    # @timeit("5. Preparing the Projector")
     def prepare_projector(optimizer):
         projector = TableProjector(optimizer.tables, optimizer.projection_columns)
         return projector
 
     @staticmethod
-    @timeit("4. Executing the Plan")
+    # @timeit("4. Executing the Plan")
     def execute_plan(facade, optimizer):
         results = facade.execute_plan(optimizer.projection_columns, optimizer.tables, optimizer.execution_conditions)
         return results
 
     @staticmethod
-    @timeit("3. Preparing the QueryFacade")
-    def prepare_facade(optimizer):
-        facade = QueryFacade(optimizer.tables, optimizer.required_cols)
+    # @timeit("3. Preparing the QueryFacade")
+    def prepare_facade(optimizer, indexType):
+        facade = QueryFacade(optimizer.tables, optimizer.required_cols, optimizer.projection_columns, indexType)
         return facade
 
     @staticmethod
-    @timeit("2. Optimizing Query")
+    # @timeit("2. Optimizing Query")
     def optimize(parsed_query):
         optimizer = QueryOptimizer(*parsed_query)
         return optimizer
 
     @staticmethod
-    @timeit("1. Parsing Query")
+    # @timeit("1. Parsing Query")
     def parse(query):
         parser = Parser(query)
         parsed_query = parser.parse_select_from_where()

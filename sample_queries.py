@@ -2,45 +2,45 @@ from server.Hangman import Hangman
 import time
 
 if __name__ == "__main__":
-    # t0 = time.time()
-    # query = 'SELECT R.review_id, R.stars, R.useful FROM review50k R WHERE R.stars >= 4 AND R.useful > 20'
-    # out = Hangman.execute(query)
-    # t1 = time.time()
-    # print("Time Elapsed %f s over 50k" % (t1 - t0))
-    # q_out = {"Oxz26pqpIb7dDVeuUzNZlg,4,66", "XBAOIjGY9KYBxqU5VzzlpQ,4,27", "rlh_Sk5croW4D1Mqu9CzRg,4,50",
-    #          "LCY-SUSHqf2Nt0phPGpKfQ,5,44", "P_RyU43VMJ6S55KwQkEUWQ,4,22", "C5v2RIDy2CsQURHLyZ5RBg,5,26",
-    #          "GjoYucYyg3iI14531KSBaw,5,26", "_QoLIsOEgZGrcT51CQ4WRw,5,46", "_ia_lz3xuBUPC_vfis8Lvg,4,53",
-    #          "s4JKaA1itibgSSEFUQZJ4g,5,36", "Hlv9lgWbRdHACNkPuzoqAA,4,21", "MiAPRxI-oKg0YTyfpwSdkA,4,30",
-    #          "zEIrwM3s6WFjSxJo4pIbdA,4,44", "uZtLQFscS_fQ_TviwuqigQ,5,25", "Gd__caJHVvTHxDU8gu1rTQ,5,26",
-    #          "psN6aShEYE8btHF8Dl7eUA,5,33", "rFmgPhkLBFX88cAAnzr5sA,5,69", "Z0sZUsJWPXSH8sEdl8m8MA,5,23",
-    #          "gPHLfmR5BHD1QAhA_sWtxw,5,28", "5rhM-NZ2ntapDlme42WmuQ,4,21", "YPjJTgMniGDKlXFpqejD0Q,5,50",
-    #          "AqAMF6ew5bHcLRn6RpqCmg,4,44", "i9q4LCyoq_HpWqIW2_SkFA,4,33", "7EHhpntHmKOc_TdXrrOn4g,4,32",
-    #          "zq0DxY7uIKObBlHRIu0REw,5,29", "WJoE9AwDVT_92v-hnlNNcA,5,35", "dnio8sXmO-kzeeKmhor1pQ,5,24",
-    #          "EhGgl3Iru8HwA1TK9ukcYA,5,99", "i9iVXV-JWqG1ZuSCSPBJJg,5,23", "mEr7Ypam5ypS0jdGrXMIDw,5,28",
-    #          "E3x7aKynGK_GFLSuFzu8mg,5,29", "IWwieboI-EKpSOeIqqiISQ,5,31", "I1MUBA6r16Np28xnyRu1QA,5,34",
-    #          "zK8w3qhfsREJMCm6edi9ig,5,25", "_1v9DTZcx76qdVQLNqxtZw,4,25", "h9S_aPV5ukVbWeE7MxxvKQ,4,51",
-    #          "RpG33CawitvaEb6hZPPuCw,5,21", "GLfPrl_aP5CmzWb4fzXOjA,5,26", "HK0OIdCfKRHsS6jjR2A-tg,5,21",
-    #          "0_advxXpmvIhWlGk9n9c0A,4,27", "1iXcFAqQTF0-mnW31AfMUw,5,21", "VG5SHbBoAHXGvxuUAQQAFw,4,24",
-    #          "FaxjsxlpGmknbv0OXEowJg,4,71", "JGvnRAMV-Z_CZlZmUa34_A,5,65", "Gyn3_VUwVGrGXn8wQIwnWQ,5,23",
-    #          "Z2zkoVqA1R_ATAbyxVfd8Q,5,36", "cm77girmk9CJwd4oOAfb6g,5,24", "u4N_fS_q3wZY-D0ZjJ8qPg,4,24",
-    #          "wmWp4bFiWBhtMxDclQv80g,5,26", "0K7ZTxexDxWVNSVMTFjtVQ,5,30", "agWa7j2y9TgJLbdnPOt1iQ,5,32",
-    #          "LEWtbvn8nb6RmQE1PhhwVA,5,21", "orne_oYUNL1OEHuCY55N7w,4,23", "7V6H1O1-eHzXkNP2XBN_sA,5,24",
-    #          "2cXXSVRNF6NfBLxQde5Vag,4,28",
-    #          "l7uqcXQ_dvWfl70JbIQ-mQ,4,25",
-    #          "LzjQ7DoKsi_TXcDkFNA9CA,5,30", "LEH3ME7yPXvQl6D7oKaCRA,5,26", "PBhcQU1N5GJZDr_qIKsoOQ,5,53",
-    #          "Z-_KjY9k8mOB97tNFgwEMg,4,45", "aSeiTctd0lehY39euzklpQ,5,21", "JgKqxEGbXFw0WFl9BJWTJw,4,70",
-    #          "XXVT102bXQkDn3Thi7H6BQ,5,23", "DXfYm30KKSCwk74eKiv3bA,4,21", "r5n4aYq-lE5uXSvEdgvfxg,5,21",
-    #          "CWmiHf_EdAgLUd7jMjvNrQ,5,30", "A4IPBr9pb5FHTT0too2jRQ,5,52", "FHUn9LP0WpMUFcuobkfvqw,4,27",
-    #          "pqL2QUVaPTiFSNEp-7i9DA,4,49", "Y9UbTFSHV2Unp09_3Pu0LQ,5,21"}
-    # out = set(out)
-    # for a in out:
-    #     if a not in q_out:
-    #         print(a)
-    # for a in q_out:
-    #     if a not in out:
-    #         print(a)
-    #
-    # assert len(q_out) == len(out)
+    t0 = time.time()
+    query = 'SELECT R.review_id, R.stars, R.useful FROM review50k R WHERE R.stars >= 4 AND R.useful > 20'
+    out = Hangman.execute(query)
+    t1 = time.time()
+    print("Time Elapsed %f s over 50k" % (t1 - t0))
+    q_out = {"Oxz26pqpIb7dDVeuUzNZlg,4,66", "XBAOIjGY9KYBxqU5VzzlpQ,4,27", "rlh_Sk5croW4D1Mqu9CzRg,4,50",
+             "LCY-SUSHqf2Nt0phPGpKfQ,5,44", "P_RyU43VMJ6S55KwQkEUWQ,4,22", "C5v2RIDy2CsQURHLyZ5RBg,5,26",
+             "GjoYucYyg3iI14531KSBaw,5,26", "_QoLIsOEgZGrcT51CQ4WRw,5,46", "_ia_lz3xuBUPC_vfis8Lvg,4,53",
+             "s4JKaA1itibgSSEFUQZJ4g,5,36", "Hlv9lgWbRdHACNkPuzoqAA,4,21", "MiAPRxI-oKg0YTyfpwSdkA,4,30",
+             "zEIrwM3s6WFjSxJo4pIbdA,4,44", "uZtLQFscS_fQ_TviwuqigQ,5,25", "Gd__caJHVvTHxDU8gu1rTQ,5,26",
+             "psN6aShEYE8btHF8Dl7eUA,5,33", "rFmgPhkLBFX88cAAnzr5sA,5,69", "Z0sZUsJWPXSH8sEdl8m8MA,5,23",
+             "gPHLfmR5BHD1QAhA_sWtxw,5,28", "5rhM-NZ2ntapDlme42WmuQ,4,21", "YPjJTgMniGDKlXFpqejD0Q,5,50",
+             "AqAMF6ew5bHcLRn6RpqCmg,4,44", "i9q4LCyoq_HpWqIW2_SkFA,4,33", "7EHhpntHmKOc_TdXrrOn4g,4,32",
+             "zq0DxY7uIKObBlHRIu0REw,5,29", "WJoE9AwDVT_92v-hnlNNcA,5,35", "dnio8sXmO-kzeeKmhor1pQ,5,24",
+             "EhGgl3Iru8HwA1TK9ukcYA,5,99", "i9iVXV-JWqG1ZuSCSPBJJg,5,23", "mEr7Ypam5ypS0jdGrXMIDw,5,28",
+             "E3x7aKynGK_GFLSuFzu8mg,5,29", "IWwieboI-EKpSOeIqqiISQ,5,31", "I1MUBA6r16Np28xnyRu1QA,5,34",
+             "zK8w3qhfsREJMCm6edi9ig,5,25", "_1v9DTZcx76qdVQLNqxtZw,4,25", "h9S_aPV5ukVbWeE7MxxvKQ,4,51",
+             "RpG33CawitvaEb6hZPPuCw,5,21", "GLfPrl_aP5CmzWb4fzXOjA,5,26", "HK0OIdCfKRHsS6jjR2A-tg,5,21",
+             "0_advxXpmvIhWlGk9n9c0A,4,27", "1iXcFAqQTF0-mnW31AfMUw,5,21", "VG5SHbBoAHXGvxuUAQQAFw,4,24",
+             "FaxjsxlpGmknbv0OXEowJg,4,71", "JGvnRAMV-Z_CZlZmUa34_A,5,65", "Gyn3_VUwVGrGXn8wQIwnWQ,5,23",
+             "Z2zkoVqA1R_ATAbyxVfd8Q,5,36", "cm77girmk9CJwd4oOAfb6g,5,24", "u4N_fS_q3wZY-D0ZjJ8qPg,4,24",
+             "wmWp4bFiWBhtMxDclQv80g,5,26", "0K7ZTxexDxWVNSVMTFjtVQ,5,30", "agWa7j2y9TgJLbdnPOt1iQ,5,32",
+             "LEWtbvn8nb6RmQE1PhhwVA,5,21", "orne_oYUNL1OEHuCY55N7w,4,23", "7V6H1O1-eHzXkNP2XBN_sA,5,24",
+             "2cXXSVRNF6NfBLxQde5Vag,4,28",
+             "l7uqcXQ_dvWfl70JbIQ-mQ,4,25",
+             "LzjQ7DoKsi_TXcDkFNA9CA,5,30", "LEH3ME7yPXvQl6D7oKaCRA,5,26", "PBhcQU1N5GJZDr_qIKsoOQ,5,53",
+             "Z-_KjY9k8mOB97tNFgwEMg,4,45", "aSeiTctd0lehY39euzklpQ,5,21", "JgKqxEGbXFw0WFl9BJWTJw,4,70",
+             "XXVT102bXQkDn3Thi7H6BQ,5,23", "DXfYm30KKSCwk74eKiv3bA,4,21", "r5n4aYq-lE5uXSvEdgvfxg,5,21",
+             "CWmiHf_EdAgLUd7jMjvNrQ,5,30", "A4IPBr9pb5FHTT0too2jRQ,5,52", "FHUn9LP0WpMUFcuobkfvqw,4,27",
+             "pqL2QUVaPTiFSNEp-7i9DA,4,49", "Y9UbTFSHV2Unp09_3Pu0LQ,5,21"}
+    out = set(out)
+    for a in out:
+        if a not in q_out:
+            print(a)
+    for a in q_out:
+        if a not in out:
+            print(a)
+
+    assert len(q_out) == len(out)
 
     t0 = time.time()
     query = 'SELECT B.name, B.postal_code, R.review_id, R.stars, R.useful FROM business B JOIN review50k R ON (' \
@@ -276,3 +276,12 @@ if __name__ == "__main__":
     out = Hangman.execute(query)
     t1 = time.time()
     print("Time Elapsed %f s over 50k" % (t1 - t0))
+    q_out = {'My Thai'}
+    for a in out:
+        if a not in q_out:
+            print(a)
+    for a in q_out:
+        if a not in out:
+            print(a)
+
+    assert len(q_out) == len(out)

@@ -37,7 +37,7 @@ class TableProjector:
             table_files.append(open(self._tables[i].filename, 'r', encoding='utf8'))
 
         # Iterate through the tuples
-        table_projections = [{}] * len(self._tables)
+        table_projections = [{} for _ in range(len(self._tables))]
         tables_to_read = None
         output = []
         for tup in row_tup_generator:
@@ -55,7 +55,7 @@ class TableProjector:
                     continue
                 loc = tup[i]
                 if loc not in table_projections[i]:
-                    if loc == '*':
+                    if loc is None:
                         # Read every row
                         table_files[i].seek(0)
                         table_files[i].readline()
