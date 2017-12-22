@@ -221,6 +221,74 @@ class EvaluationResult:
                 # Update the dict in join_map with the negation
                 self._join_map[k] = negated_map
 
+    def union(self, other):
+        # Create a new EvaluationResult as the union of this result and other
+        new_result = EvaluationResult(self._tuple_length)
+
+        # Union the consecutive conditions
+        for k in self._join_map:
+            if self._join_map[k] is None or other._join_map[k] is None:
+                # All values are accepted in one of the join maps
+                new_result[k] = None
+
+            # This pair has constraints because neither of these pairs were None
+            if k not in new_result:
+                new_result[k] = {}
+
+            # Add each key and production from both
+            for k1 in self._join_map[k]:
+                new_result[k][k1] = self._join_map[k][k1]
+
+            for k1 in other._join_map[k]:
+                if k1 in new_result[k]:
+                    if other._join_map[k][k1] is None:
+                        new_result[k][k1] = None
+                    elif new_result[k][k1] is None:
+                        continue
+                    else:
+                        new_result[k][k1] |= other._join_map[k][k1]
+
+        assert len(self._aux_deps) == 0, "Can't handle this rn"
+        return new_result
+
+    def intersect(self, other):
+        new_result = EvaluationResult(self._tuple_length)
+
+        # Intersect consecutive conditions
+        for k in self._join_map:
+            new_result._join_map[k] = self._join_map[k]
+
+        for k in new_result._join_map:
+            if new_result._join_map[k] is None:
+                new_result._join_map[k] = other._join_map[k]
+            else:
+                for k1 in list(new_result._join_map[k].keys()):
+                    if k1 not in other._join_map[k]:
+                        del new_result._join_map[k][k1]
+                    elif new_result._join_map[k][k1] is None:
+                        new_result._join_map[k][k1] = other._join_map[k][k1]
+                    elif other._join_map[k][k1] is not None:
+                        new_result._join_map[k][k1] &= other._join_map[k][k1]
+
+        # # Intersect the nonconsecutive conditions
+        for k in self._aux_deps:
+            new_result._aux_deps[k] = self._aux_deps[k]
+
+        for k in new_result._aux_deps:
+            if new_result._aux_deps[k] is None:
+                new_result._aux_deps[k] = other._aux_deps[k]
+            else:
+                for k1 in list(new_result._aux_deps[k].keys()):
+                    if k1 not in other._aux_deps[k]:
+                        del new_result._aux_deps[k][k1]
+                    elif new_result._aux_deps[k][k1] is None:
+                        new_result._aux_deps[k][k1] = other._aux_deps[k][k1]
+                    elif other._aux_deps[k][k1] is not None:
+                        new_result._aux_deps[k][k1] &= other._aux_deps[k][k1]
+
+        # assert len(self._aux_deps) == 0, "Can't handle this rn"
+        return new_result
+
     @staticmethod
     def cartesian_generator(tbl_rows, skip_tuples=set()):
         """
