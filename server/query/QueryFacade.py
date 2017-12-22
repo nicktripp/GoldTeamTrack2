@@ -59,38 +59,15 @@ class QueryFacade:
             # Use the first column to get all of the row locations from an index
             tbl_rows = []
             for tbl in tbls:
-                # Get a column for this table
-                col = None
-                for c in cols:
-                    if c.table == tbl:
-                        col = c
-                        break
-
-                # Get the index for a single column
-                if col.name == '*':
-                    col_name = list(col.table.column_index.keys())[0]
-                    col_idx = self.index_for_column(Column(col.table, col_name))
-                else:
-                    col_idx = self.index_for_column(col)
-
-                # Collect all of the row start locations for each unique value of the column
-                rows = []
-                for k, vs in col_idx.items():
-                    if isinstance(vs, list) or isinstance(vs, set):
-                        for v in vs:
-                            rows.append(v)
-                    else:
-                        assert False, "Index should have value keys and list or set values"
-
-                # Keep rows to make cartesian product
-                tbl_rows.append(rows)
-
-                # Return cartesian product generator
+                tbl_rows.append(self._table_indices[repr(tbl)].mem_locs)
             return EvaluationResult.cartesian_generator(tbl_rows)
         else:
             # Handle queries with conditions
-            eval_result = self.eval_conditions2(conds)
-            return eval_result.gen_tuples()
+            eval_result = self.eval_conditions(conds)
+            if isinstance(eval_result, EvaluationResult):
+                return eval_result.generate_tuples()
+            else:
+                return eval_result
 
     def index_for_column(self, col):
         tbl = col.table
@@ -126,18 +103,23 @@ class QueryFacade:
             right_index = self.index_for_column(right_column)
 
             # Iterate over the values of the right index
-            values = []
+            values = {}
+            left_tup_idx = self._tables.index(comparison.left_column(self._tables).table)
+            right_tup_idx = self._tables.index(comparison.right_column(self._tables).table)
             for k, vs in right_index.items():
                 # Get the rows that satisfy for each table's column
                 left_rows = left_index.op(k, comparison.operator, negated)
-                right_rows = list(vs)
-                values.append((set(left_rows), set(right_rows)))
-            left_tup_idx = self._tables.index(comparison.left_column(self._tables).table)
-            right_tup_idx = self._tables.index(comparison.right_column(self._tables).table)
+                if left_tup_idx <= right_tup_idx:
+                    # return a map from the lesser table index values to the greater
+                    for v in left_rows:
+                        values[v] = set(vs)
+                else:
+                    for v in vs:
+                        values[v] = set(left_rows)
             return left_tup_idx, right_tup_idx, values
 
-    @timeit("Evaluating Conditions the new way")
-    def eval_conditions2(self, conditions):
+    @timeit("Evaluating Conditions")
+    def eval_conditions(self, conditions):
         """
         Produces a map from table index to list of locations and
         a map from pairs of table indexes to list of pairs of table locations
@@ -151,37 +133,43 @@ class QueryFacade:
         not_union = conditions[0]
 
         # variables to store the evaluation aggregates
-        union_result = EvaluationResult(len(self._tables))
+        union_result = []
 
         # Iterate over each OR group in the conditions
         for group in conditions[1]:
-            not_intersection = group[0] # Flag to negate the results of the this AND group
-            eval_result = EvaluationResult(len(self._tables))
+            not_intersection = group[0]  # Flag to negate the results of the this AND group
+            eval_result = None
 
             # Iterate through each ANDed condition
             for condition in group[1]:
-                not_condition = condition[0] # Flag to negate the results of this condition
+                not_condition = condition[0]  # Flag to negate the results of this condition
 
                 if isinstance(condition[1], Comparison):
                     # Evaluate the comparison
                     evaluation = self.eval_comparison(condition[1], not_condition)
                 else:
                     # Evaluate nested conditions (recurse)
-                    evaluation = self.eval_conditions2(conditions[1])
+                    evaluation = self.eval_conditions(condition)
 
                 # Consolidate the evaluation results
-                self._intersect_evaluation(eval_result, evaluation)
+                eval_result = self._intersect_evaluation(eval_result, evaluation)
 
             # Negate the result
             if not_intersection:
-                self._negate(eval_result)
+                eval_result = self._negate(eval_result)
 
             # Collect the evaluation results of the OR groups
-            self._union_evaluation(union_result, eval_result)
+            if isinstance(eval_result, EvaluationResult):
+                union_result.append(eval_result.generate_tuples())
+            else:
+                union_result.append(eval_result)
+
+        # Compute the union from the list of list of tuples in union_result
+        union_result = self._union_evaluation(union_result)
 
         # Negate the result
         if not_union:
-            self._negate(union_result)
+            union_result = self._negate(union_result)
 
         return union_result
 
@@ -193,41 +181,114 @@ class QueryFacade:
         :param evaluation: the new values to consider
         :return: the new intersection
         """
+        if isinstance(evaluation, list):
+            if eval_result is None:
+                return evaluation
+            if not isinstance(eval_result, list):
+                eval_result = eval_result.generate_tuples()
+            return QueryFacade._intersect_tuples(eval_result, evaluation)
+
+        if eval_result is None:
+            eval_result = EvaluationResult(len(self._tables))
+
         if isinstance(evaluation, EvaluationResult):
             # Handle the result of a nested condition statement
             eval_result.intersect(evaluation)
         elif len(evaluation) == 2:
             # Handle the result of a column to constant comparison
             table_index, table_locations = evaluation
-            eval_result.intersect_from_single(table_index, table_locations)
+            if isinstance(eval_result, list):
+                evaluation = EvaluationResult(len(self._tables))
+                evaluation.intersect_row_list(table_index, table_locations)
+                return QueryFacade._intersect_tuples(eval_result, evaluation.generate_tuples())
+            else:
+                eval_result.intersect_row_list(table_index, table_locations)
         elif len(evaluation) == 3:
             # Handle the result of a column to column comparison
-            left_index, right_index, set_pairs_list = evaluation
+            left_index, right_index, row_map = evaluation
 
-            # Put the new pairs into the evaluation result
-            for value in set_pairs_list:
-                eval_result.add_pair(left_index, right_index, value[0], value[1])
+            if isinstance(eval_result, list):
+                evaluation = EvaluationResult(len(self._tables))
+                if left_index + 1 == right_index:
+                    evaluation.intersect_consecutive_table_rows(left_index, row_map)
+                else:
+                    evaluation.intersect_nonconsecutive_table_rows(left_index, right_index, row_map)
+                return QueryFacade._intersect_tuples(eval_result, evaluation.generate_tuples())
+            else:
+                if left_index + 1 == right_index:
+                    eval_result.intersect_consecutive_table_rows(left_index, row_map)
+                else:
+                    eval_result.intersect_nonconsecutive_table_rows(left_index, right_index, row_map)
 
-            # Update the intersection for the new pairs
-            eval_result.intersect_pairs_from_pairs()
-            eval_result.intersect_singles_from_pairs()
+        return eval_result
 
     @timeit("Unionizing Evaluation")
-    def _union_evaluation(self, union, evaluation):
+    def _union_evaluation(self, union):
         """
         Can union the result from eval_comparison with the results from eval_conditions2
-        :param union: the accumulation thus far
-        :param evaluation: the new values to consider
+        :param union: the accumulation thus far in a list of list of tuples
         :return: the new union
         """
-        union.union(evaluation)
+        return self._sorted_tuple_union(union)
+
+    @staticmethod
+    def _intersect_tuples(acc, new):
+        intersection = set()
+        for t1 in acc:
+            # If the tuple exactly exists in both keep it
+            if t1 in new:
+                intersection.add(t1)
+                continue
+
+            # If they disagree on a "*" field reduce it to the other tuple's value
+            for t2 in new:
+                t3 = []
+                keep = True
+                for a, b in zip(t1, t2):
+                    if a == b:
+                        t3.append(a)
+                    elif a is None:
+                        t3.append(b)
+                    elif b is None:
+                        t3.append(a)
+                    else:
+                        keep = False
+                        break
+                if keep:
+                    intersection.add(tuple(t3))
+        return intersection
+
+    def _sorted_tuple_union(self, tuples):
+        union = set()
+
+        # Find all of the columns that will be '*'
+        mask = [False] * len(self._tables)
+        for ts in tuples:
+            for t in ts:
+                for i, m in enumerate(mask):
+                    mask[i] = t is None or mask[i]
+
+        # Union the tuples replacing the * columns iteratively
+        for ts in tuples:
+            for t in ts:
+                nt = []
+                for i, ti in enumerate(t):
+                    nt.append(None if mask[i] else ti)
+                union.add(tuple(nt))
+
+        return sorted(list(union), key=lambda x: float(x) if isinstance(x, int) else float('inf'))
 
     @timeit("Negating Results")
     def _negate(self, result):
         """
         Returns the complement of the results, using the mem_locs store by each TableIndexer
-        :param results: results from prior evaluations in eval_conditions2
+        :param results: results from prior evaluations in eval_conditions2 in list of tuple list or EvaluationResult form
         :return: the negation of results
         """
-        result.negate(self._table_indices)
-
+        table_mem_locs = [self._table_indices[repr(tbl)].mem_locs for tbl in self._tables]
+        if isinstance(result, EvaluationResult):
+            result.negate(table_mem_locs)
+            return result.generate_tuples()
+        elif isinstance(result, list):
+            # Since there are no * generate all tuples from the cartesian product unless they are in the tuples
+            return list(EvaluationResult.cartesian_generator(table_mem_locs, result))

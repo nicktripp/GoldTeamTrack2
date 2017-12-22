@@ -143,7 +143,10 @@ class EvaluationResult:
                 self._aux[table_index2] = [table_index1]
 
     def generate_tuples(self):
-        return list(self.generate_tuples_recurse(list(self._join_map[(0,1)].keys()), [], 0))
+        if self._join_map[(0,1)] is None:
+            return list(self.generate_tuples_recurse(None, [], 0))
+        else:
+            return list(self.generate_tuples_recurse(list(self._join_map[(0, 1)].keys()), [], 0))
 
     def generate_tuples_recurse(self, vals, acc, idx):
         if idx == self._tuple_length:
@@ -186,9 +189,37 @@ class EvaluationResult:
                     if val in pairs:
                         yield from self.generate_tuples_recurse(pairs[val], acc, idx + 1)
 
+    def negate(self, table_mem_locs):
+        """
+        Invert everything
+        :param table_mem_locs:
+        :return:
+        """
+        for k in self._join_map:
+            if k == (self._tuple_length - 1, self._tuple_length):
+                # The final tuple does not need to point anywhere
+                final_mem_locs = set(table_mem_locs[k[0]])
+                final_keys = set(self._join_map[k].keys())
+                self._join_map[k] = {k1: None for k1 in (final_mem_locs - final_keys)}
+            elif self._join_map[k] is None:
+                # If the pair mapped all values through, don't allow any
+                self._join_map[k] = {}
+            else:
+                # If a value was not present before, it should be now
+                negated_map = {}
+                for k1 in set(table_mem_locs[k[0]]) - set(self._join_map[k].keys()):
+                    negated_map[k1] = None
 
-    def negate(self, table_indices):
-        pass
+                # Add in all the pairs that were not present before
+                for k1 in self._join_map[k]:
+                    if self._join_map[k][k1] is None:
+                        continue
+                    else:
+                        difference = set(table_mem_locs[k[1]]) - self._join_map[k][k1]
+                        negated_map[k1] = difference
+
+                # Update the dict in join_map with the negation
+                self._join_map[k] = negated_map
 
     @staticmethod
     def cartesian_generator(tbl_rows, skip_tuples=set()):

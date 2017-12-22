@@ -67,7 +67,7 @@ class TableIndexer:
     def _read_mem_locs(self):
         with open(self.table.filename, encoding='utf8') as f:
             size = os.path.getsize(self.table.filename)
-            self._mem_locs = [col_loc for col_val, col_loc, rec_num in self._value_location_generator(f, size, 0)]
+            self._mem_locs = [col_loc for col_val, col_loc, rec_num in self._value_location_generator(f, size, 0)][1:]
 
         with open(self.table.filename + "_mem_locs.pickle", 'wb') as f:
             pickle.dump(self._mem_locs, f, pickle.HIGHEST_PROTOCOL)
