@@ -50,14 +50,15 @@ class Comparison:
         :param tables: list of tables
         :return: Column for left hand side of the comparison
         """
-        print(type(self._left))
-        if(type(self._left) == sqlparse.sql.Operation):
+
+        if type(self._left) == sqlparse.sql.Operation:
             real_name = self._left.tokens[0].value
             l_op = self._left.tokens[2]
             number = self._left.tokens[4]
             names = real_name.split('.')
         else:
             names = self._left.value.split('.')
+            l_op, number = None, None
 
         assert len(names) == 2, "Invalid column name in comparison (%s)" % self.left
         table_name, column_name = names
@@ -65,8 +66,7 @@ class Comparison:
             if table.name == table_name or table.nickname == table_name:
                 if column_name in table.column_index:
                     return Column(table, column_name, l_op, number)
-        ## Local Variable referenced before assignment????
-        
+
         assert False, "No column was found for (%s)" % self.left
 
     def right_column(self, tables):

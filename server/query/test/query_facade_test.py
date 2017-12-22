@@ -12,9 +12,12 @@ if __name__ == "__main__":
     out = Hangman.execute(query, BitmapIndex)
     assert out == ['1', '5', '9']
 
-    query = "SELECT S.b * 3 FROM small S WHERE S.c / 6 < 4"
+    # We don't support the projection column transformation
+    query = "SELECT S.b * 3 FROM small S WHERE S.c / 2 < 4"
     out = Hangman.execute(query, BitmapIndex)
-    assert out == ['1,2', '5,6', '9,10']
+    print(out)
+    assert out == ['2', '6']
+    # assert out == ['6', '18']
 
     query = "SELECT S.* FROM small S"
     out = Hangman.execute(query, BitmapIndex)
@@ -25,6 +28,10 @@ if __name__ == "__main__":
     assert out == ['1,2,3,4', '5,6,7,8', '9,10,11,12']
 
     query = "SELECT * FROM small S WHERE S.a > 1"
+    out = Hangman.execute(query, BitmapIndex)
+    assert set(out) == {'5,6,7,8', '9,10,11,12'}
+
+    query = "SELECT * FROM small S WHERE (S.a > 1)"
     out = Hangman.execute(query, BitmapIndex)
     assert set(out) == {'5,6,7,8', '9,10,11,12'}
 

@@ -229,24 +229,26 @@ class EvaluationResult:
         for k in self._join_map:
             if self._join_map[k] is None or other._join_map[k] is None:
                 # All values are accepted in one of the join maps
-                new_result[k] = None
+                new_result._join_map[k] = None
+                continue
 
             # This pair has constraints because neither of these pairs were None
-            if k not in new_result:
-                new_result[k] = {}
+            new_result._join_map[k] = {}
 
             # Add each key and production from both
             for k1 in self._join_map[k]:
-                new_result[k][k1] = self._join_map[k][k1]
+                new_result._join_map[k][k1] = self._join_map[k][k1]
 
             for k1 in other._join_map[k]:
-                if k1 in new_result[k]:
+                if k1 in new_result._join_map[k]:
                     if other._join_map[k][k1] is None:
-                        new_result[k][k1] = None
-                    elif new_result[k][k1] is None:
+                        new_result._join_map[k][k1] = None
+                    elif new_result._join_map[k][k1] is None:
                         continue
                     else:
-                        new_result[k][k1] |= other._join_map[k][k1]
+                        new_result._join_map[k][k1] |= other._join_map[k][k1]
+                else:
+                    new_result._join_map[k][k1] = other._join_map[k][k1]
 
         assert len(self._aux_deps) == 0, "Can't handle this rn"
         return new_result

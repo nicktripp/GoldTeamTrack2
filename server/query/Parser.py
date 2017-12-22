@@ -69,7 +69,7 @@ class Parser:
         if(stmt.tokens[idx].is_group):
             if len(stmt.tokens[idx].tokens) == 3:
                 return \
-                    type(stmt.tokens[idx].tokens[2]) == sqlparse.sql.Identifier
+                    type(stmt.tokens[idx]) == sqlparse.sql.Identifier
 
             if len(stmt.tokens[idx].tokens) == 5:
                 return \
@@ -136,7 +136,7 @@ class Parser:
 
         @returns a list of the string value of tokens
         """
-        if(token.is_group & (len(token.tokens) == 5)):
+        if token.is_group and token.tokens is not None and len(token.tokens) == 5:
             return [(token.tokens[0],token.tokens[2], token.tokens[4])]
         if (type(token) == sqlparse.sql.Identifier or token.ttype == sqlparse.tokens.Wildcard):
             return [(token.value, None, None)]

@@ -1,7 +1,6 @@
 import os
 
 from server.indexing.TableIndexer import TableIndexer
-from server.query.Column import Column
 from server.query.Comparison import Comparison
 from server.query.EvaluationResult import EvaluationResult
 from server.query.Table import Table
@@ -38,6 +37,11 @@ class QueryFacade:
                 return False
         return True
 
+    def index_for_column(self, col):
+        tbl = col.table
+        return self._table_indices[repr(tbl)].column_indices[col.name]
+
+
     def execute_plan(self, cols, tbls, conds):
         """
         Executes a QueryPlan and returns a list of list of row start locations
@@ -67,10 +71,6 @@ class QueryFacade:
             eval_result = self.eval_conditions(conds)
             return eval_result.generate_tuples()
 
-    def index_for_column(self, col):
-        tbl = col.table
-        return self._table_indices[repr(tbl)].column_indices[col.name]
-
     @timeit("Evaluating Comparison")
     def eval_comparison(self, comparison, negated):
         """
@@ -88,6 +88,7 @@ class QueryFacade:
         if comparison.compares_constant(self._tables):
             # Get the constant on the right
             right_constant = comparison.right_column_or_constant(self._tables)
+            right_constant = comparison.left_column(self._tables).invert_transform(right_constant)
 
             # Perform the comparison over the index
             result = left_index.op(right_constant, comparison.operator, negated)
@@ -105,6 +106,9 @@ class QueryFacade:
             left_tup_idx = self._tables.index(comparison.left_column(self._tables).table)
             right_tup_idx = self._tables.index(comparison.right_column(self._tables).table)
             for k, vs in right_index.items():
+                # Transform key if column was given math requirements S.a + 5
+                k = right_column.transform(k)
+
                 # Get the rows that satisfy for each table's column
                 left_rows = left_index.op(k, comparison.operator, negated)
                 if left_tup_idx <= right_tup_idx:
@@ -215,9 +219,5 @@ class QueryFacade:
         :return: the negation of results
         """
         table_mem_locs = [self._table_indices[repr(tbl)].mem_locs for tbl in self._tables]
-        if isinstance(result, EvaluationResult):
-            result.negate(table_mem_locs)
-            return result.generate_tuples()
-        elif isinstance(result, list):
-            # Since there are no * generate all tuples from the cartesian product unless they are in the tuples
-            return list(EvaluationResult.cartesian_generator(table_mem_locs, result))
+        result.negate(table_mem_locs)
+        return result

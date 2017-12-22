@@ -14,11 +14,11 @@ class BitmapIndex:
 
     def __init__(self, initial_bitstring_pairs, initial_record_pairs, block_size = 4):
 
-        self.bitstringTree = BTree(block_size, initial_bitstring_pairs)
-        self.recordsTree = BTree(block_size, initial_record_pairs)
+        self.bitstringTree = BTree(block_size, initial_bitstring_pairs, False)
+        self.recordsTree = BTree(block_size, initial_record_pairs, False)
 
     @staticmethod
-    def make(pair_generator):
+    def make(pair_generator, table, column_name):
 
         initial_bitstring_pairs = {}
         initial_record_pairs = {}
@@ -29,7 +29,7 @@ class BitmapIndex:
             except StopIteration:
                 assert False, "There are not enough unique values to index this row."
 
-            k = Table.parse_value(key)
+            k = table.parse_value(key)
 
             new_bitstring_index = Bitmap_Entry(key,record_num)
 
