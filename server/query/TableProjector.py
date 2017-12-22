@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 import os
+import copy
 
 
 class TableProjector:
@@ -52,6 +53,7 @@ class TableProjector:
         table_projections = [{} for _ in range(len(self._tables))]
         tables_to_read = None
 
+        n = 0
         for i in range(len(self._tables)):
             for tup in row_tup_generator:
                 # Assert that they all read from the same number of tables
@@ -66,6 +68,11 @@ class TableProjector:
                 loc = tup[i]
                 if loc not in table_projections[i]:
                     if loc is None:
+                        # Keep a copy of what we already have in order to do the cartesian product
+                        prev_col_vals = copy.deepcopy(self._out_columns)
+                        n_ = n
+                        first_fill = True
+
                         # Read every row
                         table_files[i].seek(0)
                         table_files[i].readline()
@@ -78,9 +85,28 @@ class TableProjector:
 
                             # Project the column values
                             projections = [col_vals[j] for j in cols]
+                            if n == 0:
+                                # If there are no previous portions of the row read
+                                # just read in all col_vals for this
+                                for j, col_val in zip(cols, projections):
+                                    col = self._out_col_idx_by_tbl_col_tup[(i, j)]
+                                    self._out_columns[col].append(col_val)
+                            else:
+                                if first_fill:
+                                    for j, col_val in zip(cols, projections):
+                                        col = self._out_col_idx_by_tbl_col_tup[(i, j)]
+                                        self._out_columns[col].append(col_val)
+                                    first_fill = False
+                                else:
+                                    for _ in range(n_):
+                                        for j, col in enumerate(prev_col_vals):
+                                            self._out_columns[j].extend(col)
+                                        for j, col_val in zip(cols, projections):
+                                            col = self._out_col_idx_by_tbl_col_tup[(i, j)]
+                                            self._out_columns[col].append(col_val)
+                                    n += n_
 
-                            for j in cols:
-                                self._out_columns[self._out_col_idx_by_tbl_col_tup[(i, j)]].append(col_vals[j])
+
 
                             # Update loc and repeat
                             loc = table_files[i].tell()
@@ -94,6 +120,9 @@ class TableProjector:
                         for j, col_val in zip(cols, projections):
                             col = self._out_col_idx_by_tbl_col_tup[(i, j)]
                             self._out_columns[col].append(col_val)
+
+                        if i == 0:
+                            n += 1
 
                         # Save for later
                         table_projections[i][loc] = projections
