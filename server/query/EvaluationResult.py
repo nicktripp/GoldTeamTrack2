@@ -2,210 +2,193 @@ class EvaluationResult:
     """
     As condition are executed, an EvaluationResult instance will track
     the tuples that may appear in the final result
+
+    EvaluationResult maintains a _join_map which maps pairs of table
+    indices to a map of row location in the first table to a set of rows
+    in the second table.
+
+    _join_map[(i,j)] is None if there are no constraints
+    indicating all tuples in the cartesian product between the tables are viable
+    rows for projection.
+
+    _join_map[(i,j)][row_from_i] is None when (row_from_i, any_row_from_j) are all
+    viable tuples in the output.
+
+    _join_map[(i,j)][row_from_i] is a set of rows from j where (row_from_i, row_from_j in set)
+    are all viable tuples in the output.
+
+    The _join_map key indices are maintained as (0,1), (1,2), (2, 3), ..., (tuple_length - 2, tuple_length - 1)
+    a final (tuple_length - 1, tuple_length) maps to a dict where all keys map to None
+    in order to support easier cartesian product tuple generation
     """
 
     def __init__(self, tuple_length):
         self._tuple_length = tuple_length
-        self._singles = {}
-        self._pairs = {}
-        self._pairs_lookup = {}
 
-    def intersect_from_single(self, index, locations):
+        self._join_map = {}
+        for i in range(tuple_length):
+            self._join_map[(i, i + 1)] = None
+
+        # join_maps for out of order dependencies
+        self._aux_deps = {}
+        self._aux = {}
+
+    def intersect_row_list(self, table_index, table_locations):
         """
-        intersects the values of _singles[index] with the new set of locations
-        any pairs that reference index will also be intersected with the new values
+        Add single table values to the evaluation result via intersection
 
-        :param index:
-        :param locations:
+        ie. for 'FROM A, B WHERE A.id = B.id and A.number > 5', the 'A.number > 5' should
+        reduce the records that passed the 'A.id = B.id' condition by removing
+        key value pairs from _join_map[(0,1)] where the key is for a row in A that
+        is not present in table_locations (does not have 'A.number > 5')
+
+        :param table_index:
+        :param table_locations:
         :return:
         """
-        # Update the intersection for singles
-        if index in self._singles:
-            self._singles[index] &= set(locations)
+        join_key = (table_index, table_index + 1)
+        if self._join_map[join_key] is None:
+            # If there are no constraints on this index, use these locations
+            self._join_map[join_key] = {}
+            for loc in table_locations:
+                self._join_map[join_key][loc] = None
         else:
-            self._singles[index] = set(locations)
+            # Else remove constraints from the join map not found in these new values
+            keys_to_keep = set(table_locations)
+            for k in list(self._join_map[join_key].keys()):
+                if k not in keys_to_keep:
+                    del self._join_map[join_key][k]
 
-        # Update the intersection for any pair that includes the single
-        si = self._singles[index]
-        for p in self._pairs:
-            vi = [(v[0] & si, v[1] & si) for v in self._pairs[p]]
-            self._pairs[p] = [v for v in vi if len(v[0]) > 0 and len(v[1]) > 0]
+    def intersect_consecutive_table_rows(self, first_table_index, row_map):
+        assert self._tuple_length > 1, "There must be multiple tables"
 
-    def add_pair(self, left_index, right_index, left_set, right_set):
-        # Put the pair in order
-        if left_index < right_index:
-            key = (left_index, right_index)
-            value = (left_set, right_set)
+        join_key = (first_table_index, first_table_index + 1)
+        if self._join_map[join_key] is None:
+            # There are no constraints on this index, use these
+            self._join_map[join_key] = row_map
         else:
-            key = (left_index, right_index)
-            value = (right_set, left_set)
+            # There are already constraints that must be intersected with the row_map
+            for k in list(self._join_map[join_key].keys()):
+                if k not in row_map:
+                    # Each key in join_map must be in row_map and vice versa
+                    del self._join_map[join_key][k]
+                else:
+                    # Each value a key maps to must be in join_map and vice versa
+                    if self._join_map[join_key][k] is None:
+                        self._join_map[join_key][k] = row_map[k]
+                    else:
+                        for v in list(self._join_map[join_key][k].keys()):
+                            if v not in row_map[k]:
+                                del self._join_map[join_key][k][v]
 
-        # if there are constraints on the index, the new sets must intersect
-        if key[0] in self._singles:
-            value = (value[0] & self._singles[key[0]]), value[1]
-
-        if key[1] in self._singles:
-            value = (value[0], value[1] & self._singles[key[1]])
-
-        # if there are still items in both sets, then add them to the pairs
-        if len(value[0]) > 0 and len(value[1]) > 0:
-            if key not in self._pairs:
-                self._pairs[key] = []
-            self._pairs[key] = value
-
-    def intersect_singles_from_pairs(self):
+    def intersect_reflexive_table_rows(self, table_index, row_map):
         """
-        Iterates over all pairs, collecting the set of values that
-        are supported for each table
+        for example,
+        'FROM M WHERE M.producer = M.director'
+        we can only filter rows from the same table
+        :param table_index:
+        :param row_map:
         :return:
         """
-        # Update the singles entry from the list of (set, set) values in _pairs
-        for l, r in self._pairs:
-            # Get all of the values for an index
-            acc = (set(), set())
-            for value in self._pairs[(l, r)]:
-                acc[0] |= value[0]
-                acc[1] |= value[1]
+        # Condense the map
+        for k in list(row_map.keys()):
+            if row_map[k] is not None and k not in row_map[k]:
+                del row_map[k]
+        keys_to_keep = set(row_map.keys())
 
-            # All values in the pairs were already in singles or singles was empty
-            self._singles[l] = acc[0]
-            self._singles[r] = acc[1]
+        # Compute the intersection
+        join_key = (table_index, table_index + 1)
+        if self._join_map[join_key] is None:
+            # There are no constraints
+            self._join_map[join_key] = {}
+            for k in keys_to_keep:
+                self._join_map[join_key][k] = None
+        else:
+            # Need to intersect the results with existing results
+            for k in list(self._join_map[join_key].keys()):
+                if k not in keys_to_keep:
+                    del self._join_map[join_key][k]
 
-    def intersect_pairs_from_pairs(self):
+    def intersect_nonconsecutive_table_rows(self, table_index1, table_index2, row_map):
         """
-        Iterates through the pairs updating the value list
-        for each pair such that if there exists another pair with
-        one matching table index, then all the sets in the in
-        value list for both pairs will have been intersected
+        For cases like the following
+        "FROM A, B, C WHERE A.id = C.id", we could abstract the ordering as "FROM A, C, B ...", but
+        in cases like "FROM A, B, C WHERE A.id = B.id AND A.id = C.id" we have to pipe
+        the constraints through each table index from [table_index1,table_index2]
 
-        ie if pairs looks like this
-        (0, 1) : [({100, 200, 300}, {23, 34}), ({300, 400}, {45})]
-        (1, 2) : [({34, 56}, {1, 2, 3})]
-
-        the result of the intersection looks like
-
-        (0, 1) : [({100, 200, 300}, {34})]
-        (1, 2) : [{34}, {1, 2, 3})]
-
-        :return: None
         """
-        pair_list = list(sorted(self._pairs))
-        for i, p1 in enumerate(pair_list):
-            l1, r1 = p1
-            for j in range(i + 1, len(pair_list)):
-                p2 = pair_list[j]
-                l2, r2 = p2
-                if l1 == l2:
-                    self._intersect_pair(0, 0, p1, p2)
-                if l1 == r2:
-                    self._intersect_pair(0, 1, p1, p2)
-                if r1 == l2:
-                    self._intersect_pair(1, 0, p1, p2)
-                if r1 == r2:
-                    self._intersect_pair(1, 1, p1, p2)
+        assert table_index1 < table_index2 - 1
 
-    def _intersect_pair(self, a, b, p1, p2):
-        # Compute the intersection of set a and set b (left or right 0 or 1)
-        s1, s2 = set(), set()
-        for v in self._pairs[p1]:
-            s1 |= v[a]
-        for v in self._pairs[p2]:
-            s2 |= v[b]
+        join_key = (table_index1, table_index1 + 1)
+        if self._join_map[join_key] is None:
+            self._join_map[join_key] = {}
+            for k in row_map:
+                self._join_map[join_key][k] = None
+        else:
+            # Remove elements not in intersection from consecutive map
+            for k in list(self._join_map[join_key].keys()):
+                if k not in row_map:
+                    del self._join_map[join_key][k]
 
-        i12 = s1 & s2
-        # Remove entries not in the intersection
-        v1s = [(v[0] & i12, v[1]) for v in self._pairs[p1]]
-        self._pairs[p1] = [v for v in v1s if len(v[0]) > 0]
-        v2s = [(v[0], v[1] & i12) for v in self._pairs[p1]]
-        self._pairs[p2] = [v for v in v2s if len(v[0]) > 0]
+            # Remove elements not in intersection from non consecutive map
+            for k in list(row_map.keys()):
+                if k not in self._join_map[join_key]:
+                    del row_map[k]
 
-    def intersect(self, other):
-        # Intersect the singles from other
-        for index in other._singles:
-            self.intersect_from_single(index, other._singles[index])
-
-        # Intersect the pairs from other
-        for p in other._pairs:
-            for value in other._pairs[p]:
-                self.add_pair(p[0], p[1], value[0], value[1])
-
-            # Update the intersection following the addition of the pairs
-            self.intersect_pairs_from_pairs()
-            self.intersect_singles_from_pairs()
-
-    def union(self, other):
-        # TODO: actually do something
-        if True:
-            self._singles = other._singles
-            self._pairs = other._pairs
-            return
-
-        # TODO: How to do union on this representation ... ???
-        # Union the singles
-        for index in other._singles:
-            if index in self._singles:
-                self._singles[index] |= other._singles[index]
+            # Keep the mapping for tuple generation
+            self._aux_deps[(table_index1, table_index2)] = row_map
+            if table_index2 in self._aux:
+                self._aux[table_index2].append(table_index1)
             else:
-                self._singles[index] = other._singles[index]
+                self._aux[table_index2] = [table_index1]
 
-        # handle uniting the pairs results
-        for p in other._pairs:
-            if p in self._pairs:
-                # TODO: handle duplicate pairs caused by extending without checking
-                # Extend pairs with other's pairs
-                self._pairs[p].extend(other._pairs[p])
+    def generate_tuples(self):
+        return list(self.generate_tuples_recurse(list(self._join_map[(0,1)].keys()), [], 0))
 
+    def generate_tuples_recurse(self, vals, acc, idx):
+        if idx == self._tuple_length:
+            yield tuple(acc)
+        else:
+            if idx in self._aux:
+                # get the values of the columns that this index depends on
+                deps = self._aux[idx]
+                for d in deps:
+                    if acc[d] in self._aux_deps[(d, idx)]:
+                        if self._aux_deps[(d, idx)][acc[d]] is None:
+                            vals = None
+                        else:
+                            if vals is None:
+                                vals = self._aux_deps[(d, idx)][acc[d]]
+                            else:
+                                vals &= self._aux_deps[(d, idx)][acc[d]]
 
-            elif p not in self._pairs:
-                self._pairs[p] = other._pairs[p]
-                # TODO: self might already have constraints on these values
-                # How should unions be done for this case?
-                pass
+            if vals is None:
+                pair_map = self._join_map[(idx, idx + 1)]
+                if pair_map is None:
+                    # use all values None
+                    acc = list(acc)
+                    acc.append(None)
+                    yield from self.generate_tuples_recurse(None, acc, idx + 1)
+                    return
+                else:
+                    # use the keys for the index
+                    vals = list(pair_map.keys())
+
+            acc = list(acc)
+            acc.append(None)
+            pairs = self._join_map[(idx, idx + 1)]
+
+            for val in vals:
+                acc[-1] = val
+                if pairs is None:
+                    yield from self.generate_tuples_recurse(pairs, acc, idx + 1)
+                else:
+                    if val in pairs:
+                        yield from self.generate_tuples_recurse(pairs[val], acc, idx + 1)
+
 
     def negate(self, table_indices):
         pass
-
-    def gen_tuples(self):
-        # Create the cartesian products from the sets of viable rows
-        pair_list = sorted(self._pairs)
-        values = [self._pairs[p] for p in pair_list]
-        window = [next(value) for value in values]
-
-        while True:
-            product_list = [None] * self._tuple_length
-
-            # Fill the product list tuples from the pairs
-            for i in range(len(pair_list)):
-                p = pair_list[i]
-                product_list[p[0]] = list(window[i][0])
-                product_list[p[1]] = list(window[i][1])
-
-            # Fill the empty spots with known constraints for singles (col to const conditions)
-            for i in range(self._tuple_length):
-                if product_list[i] is None and i in self._singles:
-                    product_list[i] = list(self._singles[i])
-
-            # Yield the cartesian product over this list of sets of locations
-            yield from EvaluationResult.cartesian_generator(product_list)
-
-            # Advance the window
-            advanced = False
-            i = self._tuple_length - 1
-            while not advanced:
-                try:
-                    window[i] = next(values[i])
-                    advanced = True
-                except IndexError:
-                        # There was no window to advance
-                        return None
-                except StopIteration:
-                    if i == 0:
-                        # We have advanced through all combinations
-                        return None
-                    else:
-                        # Reset the iterator
-                        window[i] = list(values[i])
-                        i -= 1
 
     @staticmethod
     def cartesian_generator(tbl_rows, skip_tuples=set()):
