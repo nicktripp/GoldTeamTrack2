@@ -160,7 +160,7 @@ class QueryFacade:
             if union_result is None:
                 union_result = eval_result
             else:
-                union_result = union_result.union(eval_result)
+                union_result = self._union_evaluation(union_result, eval_result)
 
         # Negate the result
         if not_union:
@@ -199,60 +199,13 @@ class QueryFacade:
             return eval_result
 
     @timeit("Unionizing Evaluation")
-    def _union_evaluation(self, union):
+    def _union_evaluation(self, union_result, eval_result):
         """
         Can union the result from eval_comparison with the results from eval_conditions2
         :param union: the accumulation thus far in a list of list of tuples
         :return: the new union
         """
-        return self._sorted_tuple_union(union)
-
-    @staticmethod
-    def _intersect_tuples(acc, new):
-        intersection = set()
-        for t1 in acc:
-            # If the tuple exactly exists in both keep it
-            if t1 in new:
-                intersection.add(t1)
-                continue
-
-            # If they disagree on a "*" field reduce it to the other tuple's value
-            for t2 in new:
-                t3 = []
-                keep = True
-                for a, b in zip(t1, t2):
-                    if a == b:
-                        t3.append(a)
-                    elif a is None:
-                        t3.append(b)
-                    elif b is None:
-                        t3.append(a)
-                    else:
-                        keep = False
-                        break
-                if keep:
-                    intersection.add(tuple(t3))
-        return intersection
-
-    def _sorted_tuple_union(self, tuples):
-        union = set()
-
-        # Find all of the columns that will be '*'
-        mask = [False] * len(self._tables)
-        for ts in tuples:
-            for t in ts:
-                for i, m in enumerate(mask):
-                    mask[i] = t is None or mask[i]
-
-        # Union the tuples replacing the * columns iteratively
-        for ts in tuples:
-            for t in ts:
-                nt = []
-                for i, ti in enumerate(t):
-                    nt.append(None if mask[i] else ti)
-                union.add(tuple(nt))
-
-        return sorted(list(union), key=lambda x: float(x) if isinstance(x, int) else float('inf'))
+        return union_result.union(eval_result)
 
     @timeit("Negating Results")
     def _negate(self, result):

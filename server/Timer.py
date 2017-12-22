@@ -10,7 +10,7 @@ def timeit(timer_tag):
             t0 = time.time()
             result = func(*args, **kwargs)
             t1 = time.time()
-            print("Time Elapsed :: %f s" % (t1 - t0))
+            print("\tTime Elapsed :: %f s" % (t1 - t0))
             return result
 
         return returned_wrapper

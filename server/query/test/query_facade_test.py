@@ -5,6 +5,10 @@ from server.indexing.BTreeIndex import BTreeIndex
 if __name__ == "__main__":
 
     query = "SELECT S.a FROM small S"
+    out = Hangman.execute(query, BTreeIndex)
+    assert out == ['1', '5', '9']
+
+    query = "SELECT S.a FROM small S"
     out = Hangman.execute(query, BitmapIndex)
     assert out == ['1', '5', '9']
 
@@ -26,7 +30,6 @@ if __name__ == "__main__":
 
     query = "SELECT * FROM small S WHERE NOT (S.a > 1)"
     out = Hangman.execute(query, BitmapIndex)
-    print(out)
     assert out == ['1,2,3,4']
 
     query = "SELECT * FROM small S WHERE NOT S.a > 1"
@@ -136,7 +139,13 @@ if __name__ == "__main__":
     assert set(out) == {'1,2,3,4,1,2,3,4',
                         '5,6,7,8,1,2,3,4',
                         '9,10,11,12,1,2,3,4'}
-    
+
+    query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE (S2.b = 2 AND (S1.a < 9 AND S1.a > 1 OR S1.a <> 5))"
+    out = Hangman.execute(query, BTreeIndex)
+    assert set(out) == {'1,2,3,4,1,2,3,4',
+                        '5,6,7,8,1,2,3,4',
+                        '9,10,11,12,1,2,3,4'}
+
     query = "SELECT S.*, M.* FROM small S, medium M WHERE S.a = M.a"
     out = Hangman.execute(query, BitmapIndex)
     assert set(out) == {'1,2,3,4,1,2,3', '1,2,3,4,1,4,5', '1,2,3,4,1,6,7'}
