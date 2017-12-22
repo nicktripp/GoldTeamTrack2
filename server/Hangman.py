@@ -72,6 +72,9 @@ class Hangman:
     # @timeit("3. Preparing the QueryFacade")
     def prepare_facade(optimizer, indexType):
         facade = QueryFacade(optimizer.tables, optimizer.required_cols, optimizer.projection_columns, indexType)
+    @timeit("3. Preparing the QueryFacade")
+    def prepare_facade(optimizer, indexType):
+        facade = QueryFacade(optimizer.tables, optimizer.required_cols, indexType)
         return facade
 
     @staticmethod
