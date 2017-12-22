@@ -57,7 +57,8 @@ class Comparison:
             number = self._left.tokens[4]
             names = real_name.split('.')
         else:
-            names = self._left.value.split('.')
+            val = self._left if isinstance(self._left, str) else self._left.value
+            names = val.split('.')
             l_op, number = None, None
 
         assert len(names) == 2, "Invalid column name in comparison (%s)" % self.left
@@ -84,9 +85,10 @@ class Comparison:
         :return: Column for right hand side or unboxed constant
         """
 
-        if('.' in self._right.value):
-            names = self._right.value.split('.')
-        names = self._right.value.split('.')
+        val = self._right if isinstance(self._right, str) else self._right.value
+        if '.' in val:
+            names = val.split('.')
+        names = val.split('.')
         if len(names) == 2:
             table_name, column_name = names
             for table in tables:
@@ -97,12 +99,12 @@ class Comparison:
         assert not force_column, "Column was required on right hand side of Comparison"
 
         # The right must be constant remove the double quotes
-        if self._right.value[0] == "\"" and self._right.value[-1] == "\"":
-            self._right.value = self._right.value[1:-1]
+        if val[0] == "\"" and val[-1] == "\"":
+            val = val[1:-1]
 
         # Try to parse as float, date, int, boolean, and text
         left_col = self.left_column(tables)
-        return left_col.table.parse_value_for_column(self._right.value, left_col.name)
+        return left_col.table.parse_value_for_column(val, left_col.name)
 
     def compares_constant(self, tables):
         return not isinstance(self.right_column_or_constant(tables), Column)

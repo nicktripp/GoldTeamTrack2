@@ -264,13 +264,16 @@ class EvaluationResult:
             if new_result._join_map[k] is None:
                 new_result._join_map[k] = other._join_map[k]
             else:
-                for k1 in list(new_result._join_map[k].keys()):
-                    if k1 not in other._join_map[k]:
-                        del new_result._join_map[k][k1]
-                    elif new_result._join_map[k][k1] is None:
-                        new_result._join_map[k][k1] = other._join_map[k][k1]
-                    elif other._join_map[k][k1] is not None:
-                        new_result._join_map[k][k1] &= other._join_map[k][k1]
+                if other._join_map[k] is None:
+                    continue
+                else:
+                    for k1 in list(new_result._join_map[k].keys()):
+                        if k1 not in other._join_map[k]:
+                            del new_result._join_map[k][k1]
+                        elif new_result._join_map[k][k1] is None:
+                            new_result._join_map[k][k1] = other._join_map[k][k1]
+                        elif other._join_map[k][k1] is not None:
+                            new_result._join_map[k][k1] &= other._join_map[k][k1]
 
         # # Intersect the nonconsecutive conditions
         for k in self._aux_deps:
