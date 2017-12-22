@@ -65,10 +65,7 @@ class QueryFacade:
         else:
             # Handle queries with conditions
             eval_result = self.eval_conditions(conds)
-            if isinstance(eval_result, EvaluationResult):
-                return eval_result.generate_tuples()
-            else:
-                return eval_result
+            return eval_result.generate_tuples()
 
     def index_for_column(self, col):
         tbl = col.table
@@ -134,7 +131,7 @@ class QueryFacade:
         not_union = conditions[0]
 
         # variables to store the evaluation aggregates
-        union_result = []
+        union_result = None
 
         # Iterate over each OR group in the conditions
         for group in conditions[1]:
@@ -160,13 +157,10 @@ class QueryFacade:
                 eval_result = self._negate(eval_result)
 
             # Collect the evaluation results of the OR groups
-            if isinstance(eval_result, EvaluationResult):
-                union_result.append(eval_result.generate_tuples())
+            if union_result is None:
+                union_result = eval_result
             else:
-                union_result.append(eval_result)
-
-        # Compute the union from the list of list of tuples in union_result
-        union_result = self._union_evaluation(union_result)
+                union_result = union_result.union(eval_result)
 
         # Negate the result
         if not_union:
@@ -182,46 +176,27 @@ class QueryFacade:
         :param evaluation: the new values to consider
         :return: the new intersection
         """
-        if isinstance(evaluation, list):
-            if eval_result is None:
-                return evaluation
-            if not isinstance(eval_result, list):
-                eval_result = eval_result.generate_tuples()
-            return QueryFacade._intersect_tuples(eval_result, evaluation)
-
         if eval_result is None:
             eval_result = EvaluationResult(len(self._tables))
 
         if isinstance(evaluation, EvaluationResult):
             # Handle the result of a nested condition statement
-            eval_result.intersect(evaluation)
+            return eval_result.intersect(evaluation)
         elif len(evaluation) == 2:
             # Handle the result of a column to constant comparison
             table_index, table_locations = evaluation
-            if isinstance(eval_result, list):
-                evaluation = EvaluationResult(len(self._tables))
-                evaluation.intersect_row_list(table_index, table_locations)
-                return QueryFacade._intersect_tuples(eval_result, evaluation.generate_tuples())
-            else:
-                eval_result.intersect_row_list(table_index, table_locations)
+            eval_result.intersect_row_list(table_index, table_locations)
+            return eval_result
         elif len(evaluation) == 3:
             # Handle the result of a column to column comparison
             left_index, right_index, row_map = evaluation
 
-            if isinstance(eval_result, list):
-                evaluation = EvaluationResult(len(self._tables))
-                if left_index + 1 == right_index:
-                    evaluation.intersect_consecutive_table_rows(left_index, row_map)
-                else:
-                    evaluation.intersect_nonconsecutive_table_rows(left_index, right_index, row_map)
-                return QueryFacade._intersect_tuples(eval_result, evaluation.generate_tuples())
+            if left_index + 1 == right_index:
+                eval_result.intersect_consecutive_table_rows(left_index, row_map)
             else:
-                if left_index + 1 == right_index:
-                    eval_result.intersect_consecutive_table_rows(left_index, row_map)
-                else:
-                    eval_result.intersect_nonconsecutive_table_rows(left_index, right_index, row_map)
+                eval_result.intersect_nonconsecutive_table_rows(left_index, right_index, row_map)
 
-        return eval_result
+            return eval_result
 
     @timeit("Unionizing Evaluation")
     def _union_evaluation(self, union):
