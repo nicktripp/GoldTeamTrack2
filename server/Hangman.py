@@ -51,13 +51,13 @@ class Hangman:
             # TODO: throw different errors and handle them
 
     @staticmethod
-    # @timeit("6. Projecting the Results")
+    @timeit("6. Projecting the Results")
     def project(optimizer, projector, results):
         query_output = projector.aggregate(results, optimizer.distinct)
         return query_output
 
     @staticmethod
-    # @timeit("5. Preparing the Projector")
+    @timeit("5. Preparing the Projector")
     def prepare_projector(optimizer):
         projector = TableProjector(optimizer.tables, optimizer.projection_columns)
         return projector
@@ -75,13 +75,13 @@ class Hangman:
         return facade
 
     @staticmethod
-    # @timeit("2. Optimizing Query")
+    @timeit("2. Optimizing Query")
     def optimize(parsed_query):
         optimizer = QueryOptimizer(*parsed_query)
         return optimizer
 
     @staticmethod
-    # @timeit("1. Parsing Query")
+    @timeit("1. Parsing Query")
     def parse(query):
         parser = Parser(query)
         parsed_query = parser.parse_select_from_where()

@@ -271,13 +271,22 @@ class EvaluationResult:
                         new_result._join_map[k][k1] &= other._join_map[k][k1]
 
         # # Intersect the nonconsecutive conditions
-        # for k in self._aux_deps:
-        #     new_result._aux_deps[k] = self._aux_deps[k]
-        #
-        # for k in new_result._aux_deps:
-        #
+        for k in self._aux_deps:
+            new_result._aux_deps[k] = self._aux_deps[k]
 
-        assert len(self._aux_deps) == 0, "Can't handle this rn"
+        for k in new_result._aux_deps:
+            if new_result._aux_deps[k] is None:
+                new_result._aux_deps[k] = other._aux_deps[k]
+            else:
+                for k1 in list(new_result._aux_deps[k].keys()):
+                    if k1 not in other._aux_deps[k]:
+                        del new_result._aux_deps[k][k1]
+                    elif new_result._aux_deps[k][k1] is None:
+                        new_result._aux_deps[k][k1] = other._aux_deps[k][k1]
+                    elif other._aux_deps[k][k1] is not None:
+                        new_result._aux_deps[k][k1] &= other._aux_deps[k][k1]
+
+        # assert len(self._aux_deps) == 0, "Can't handle this rn"
         return new_result
 
     @staticmethod
