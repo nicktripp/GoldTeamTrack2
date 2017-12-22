@@ -206,7 +206,7 @@ class Parser:
 
         tbls = self.token_to_list(stmt.tokens[idx])
         for tbl in tbls:
-            self.tbls.append(self.str_to_Table(tbl))
+            self.tbls.append(self.str_to_Table(tbl[0]))
 
         return idx + 1
 
