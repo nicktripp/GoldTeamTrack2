@@ -1,6 +1,7 @@
 import sys
 
 from server.Timer import timeit
+from server.indexing.BTreeIndex import BTreeIndex
 from server.query.Parser import Parser
 from server.query.QueryFacade import QueryFacade
 from server.query.QueryOptimizer import QueryOptimizer
@@ -17,7 +18,7 @@ class Hangman:
 
     @staticmethod
     @timeit("0. Starting Query")
-    def execute(query):
+    def execute(query, indexType=BTreeIndex):
         """
         Parses the SQL statements
         Creates an execution plan
