@@ -1,10 +1,10 @@
 from server.Hangman import Hangman
 import time
-
+from server.indexing.BTreeIndex import BTreeIndex
 if __name__ == "__main__":
     t0 = time.time()
     query = 'SELECT R.review_id, R.stars, R.useful FROM review50k R WHERE R.stars >= 4 AND R.useful > 20'
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BTreeIndex)
     t1 = time.time()
     print("Time Elapsed %f s over 50k" % (t1 - t0))
     q_out = {"Oxz26pqpIb7dDVeuUzNZlg,4,66", "XBAOIjGY9KYBxqU5VzzlpQ,4,27", "rlh_Sk5croW4D1Mqu9CzRg,4,50",
