@@ -57,6 +57,7 @@ class Parser:
             i += 1
         return i
 
+
     def validate_identifier(self, stmt, idx):
         """
         Tests the token at the given index to see if it is either
@@ -65,6 +66,15 @@ class Parser:
 
         @returns a boolean
         """
+        if(stmt.tokens[idx].is_group):
+            if len(stmt.tokens[idx].tokens) == 3:
+                return \
+                    type(stmt.tokens[idx].tokens[2]) == sqlparse.sql.Identifier
+
+            if len(stmt.tokens[idx].tokens) == 5:
+                return \
+                    type(stmt.tokens[idx].tokens[0]) == sqlparse.sql.Identifier
+
         return \
             stmt.tokens[idx].match(sqlparse.tokens.Wildcard, '*') or \
             type(stmt.tokens[idx]) == sqlparse.sql.Identifier or \
@@ -113,6 +123,7 @@ class Parser:
         if (not self.validate_identifier(stmt, idx)):
             raise SQLParsingError(sqlparse.format(stmt.value, keyword_case='upper'), "Unrecognized SELECT format")
 
+
         self.cols = self.token_to_list(stmt.tokens[idx])
 
         return idx + 1
@@ -125,8 +136,10 @@ class Parser:
 
         @returns a list of the string value of tokens
         """
+        if(token.is_group & (len(token.tokens) == 5)):
+            return [(token.tokens[0],token.tokens[2], token.tokens[4])]
         if (type(token) == sqlparse.sql.Identifier or token.ttype == sqlparse.tokens.Wildcard):
-            return [token.value]
+            return [(token.value, None, None)]
         elif (type(token) == sqlparse.sql.IdentifierList):
             # Convert list recursively
             return self.tokenlist_to_list(token)
@@ -142,7 +155,7 @@ class Parser:
         l = []
         for sub_token in tokenlist.tokens:
             if (type(sub_token) == sqlparse.sql.Identifier or sub_token.ttype == sqlparse.tokens.Wildcard):
-                l.append(sub_token.value)
+                l.append((sub_token.value,None, None))
 
         return l
 
@@ -280,7 +293,7 @@ class Parser:
 
         tbls = self.token_to_list(stmt.tokens[idx])
         for tbl in tbls:
-            self.tbls.append(self.str_to_Table(tbl))
+            self.tbls.append(self.str_to_Table(tbl[0]))
 
         idx += 1
 
@@ -521,7 +534,7 @@ class Parser:
         # Convert the column string values to Column instances
         requires_prefix = len(self.tbls) == 1
         for i in range(len(self.cols)):
-            col_str = self.cols[i]
+            col_str, op, number = self.cols[i]
             if col_str == '*':
                 if len(self.tbls) == 1:
                     self.cols[i] = Column(self.tbls[0], col_str)
@@ -530,7 +543,7 @@ class Parser:
                                                                                              "selector.")
                 continue
 
-            table_column = col_str.split('.')
+            table_column = col_str.value.split('.')
             if len(table_column) < 2:
                 if requires_prefix:
                     self.cols[i] = Column(self.tbls[0], col_str)
@@ -539,7 +552,7 @@ class Parser:
                                           "Unexpected end of query")
             else:
                 tbl, name = tbl_dict[table_column[0]], table_column[1]
-                self.cols[i] = Column(tbl, name)
+                self.cols[i] = Column(tbl, name, op, number)
 
     def check_index(self, stmt, idx):
         """

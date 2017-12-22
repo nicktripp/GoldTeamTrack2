@@ -3,10 +3,12 @@ from server.query.Table import Table
 
 class Column:
 
-    def __init__(self, table, name):
+    def __init__(self, table, name, op, number):
         assert isinstance(table, Table), "A Column must belong to a Table."
         self._name = name
         self._table = table
+        self.op = op
+        self.number = number
 
     def __eq__(self, other):
         if isinstance(other, Column):
