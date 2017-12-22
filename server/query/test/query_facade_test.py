@@ -70,32 +70,32 @@ if __name__ == "__main__":
     assert out == ["abc,abd,abe,abf,abg"]
  
     query = "SELECT S1.* FROM small S1, small S2 WHERE S1.a > 1 AND S2.a < 9"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert set(out) == {'5,6,7,8', '5,6,7,8', '9,10,11,12', '9,10,11,12'}
     
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a > 1 AND S2.a < 9"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert set(out) == {'5,6,7,8,1,2,3,4', '5,6,7,8,5,6,7,8', '9,10,11,12,1,2,3,4', '9,10,11,12,5,6,7,8'}
     
     query = "SELECT * FROM small S1 WHERE S1.a = 1 OR S1.a <> 1"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert set(out) == {'1,2,3,4', '5,6,7,8', '9,10,11,12'}
     
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a = 1"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     print(out)
     assert out == ['1,2,3,4,1,2,3,4',
                     '1,2,3,4,5,6,7,8',
                     '1,2,3,4,9,10,11,12']
     
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a = 1 OR S1.a = 2"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert out == ['1,2,3,4,1,2,3,4',
                     '1,2,3,4,5,6,7,8',
                     '1,2,3,4,9,10,11,12']
     
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a = 1 OR S1.a = 5"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert set(out) == {'1,2,3,4,1,2,3,4',
                         '1,2,3,4,5,6,7,8',
                         '1,2,3,4,9,10,11,12',
@@ -104,7 +104,7 @@ if __name__ == "__main__":
                         '5,6,7,8,9,10,11,12'}
     
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a = 1 OR (S1.a = 5)"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert set(out) == {'1,2,3,4,1,2,3,4',
                         '1,2,3,4,5,6,7,8',
                         '1,2,3,4,9,10,11,12',
@@ -113,13 +113,13 @@ if __name__ == "__main__":
                         '5,6,7,8,9,10,11,12'}
     
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a = 1 OR (S1.a = 5 OR S1.a = 9)"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert set(out) == {'1,2,3,4,1,2,3,4', '1,2,3,4,5,6,7,8', '1,2,3,4,9,10,11,12', '5,6,7,8,1,2,3,4',
                         '5,6,7,8,5,6,7,8', '5,6,7,8,9,10,11,12', '9,10,11,12,1,2,3,4', '9,10,11,12,5,6,7,8',
                         '9,10,11,12,9,10,11,12'}
     
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE (S1.a = 1 OR (S1.a = 5 OR S1.a = 9)) AND NOT S1.a = 1"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert set(out) == {'5,6,7,8,1,2,3,4',
                         '5,6,7,8,5,6,7,8',
                         '5,6,7,8,9,10,11,12',
@@ -128,28 +128,28 @@ if __name__ == "__main__":
                         '9,10,11,12,9,10,11,12'}
     
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE (S2.b = 2 AND (S1.a < 9 AND S1.a > 1))"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert out == ['5,6,7,8,1,2,3,4']
     
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE (S2.b = 2 AND (S1.a < 9 AND S1.a > 1 OR S1.a <> 5))"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert set(out) == {'1,2,3,4,1,2,3,4',
                         '5,6,7,8,1,2,3,4',
                         '9,10,11,12,1,2,3,4'}
     
     query = "SELECT S.*, M.* FROM small S, medium M WHERE S.a = M.a"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert set(out) == {'1,2,3,4,1,2,3', '1,2,3,4,1,4,5', '1,2,3,4,1,6,7'}
     
     query = "SELECT S.*, M.* FROM small S, medium M WHERE M.a <> 1"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert set(out) == {'1,2,3,4,2,5,6', '5,6,7,8,2,5,6', '9,10,11,12,2,5,6', '1,2,3,4,3,4,5', '5,6,7,8,3,4,5',
                         '9,10,11,12,3,4,5', '1,2,3,4,3,8,9', '5,6,7,8,3,8,9', '9,10,11,12,3,8,9', '1,2,3,4,2,3,4',
                         '5,6,7,8,2,3,4', '9,10,11,12,2,3,4', '1,2,3,4,2,7,8', '5,6,7,8,2,7,8', '9,10,11,12,2,7,8',
                         '1,2,3,4,3,6,7', '5,6,7,8,3,6,7', '9,10,11,12,3,6,7'}
     
     query = "SELECT S.*, M.* FROM small S, medium M WHERE S.a = M.a OR M.a <> 1"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert set(out) == {'1,2,3,4,2,5,6', '5,6,7,8,2,5,6', '9,10,11,12,2,5,6', '1,2,3,4,3,4,5', '5,6,7,8,3,4,5',
                         '9,10,11,12,3,4,5', '1,2,3,4,3,8,9', '5,6,7,8,3,8,9', '9,10,11,12,3,8,9', '1,2,3,4,2,3,4',
                         '5,6,7,8,2,3,4', '9,10,11,12,2,3,4', '1,2,3,4,2,7,8', '5,6,7,8,2,7,8', '9,10,11,12,2,7,8',
@@ -157,24 +157,24 @@ if __name__ == "__main__":
                         '1,2,3,4,1,6,7'}
     
     query = "SELECT S.*, M.* FROM small S, medium M WHERE S.a = M.a AND M.a < 2"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert set(out) == {'1,2,3,4,1,2,3', '1,2,3,4,1,4,5', '1,2,3,4,1,6,7'}
     
     query = "SELECT S.*, M.* FROM small S, medium M WHERE S.a = M.a AND M.a <> 1"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert set(out) == set()
     
     query = "SELECT S.*, M.* FROM small S JOIN medium M"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     print(out)
     assert set(out) == {'1,2,3,4,1,2,3', '1,2,3,4,1,4,5', '1,2,3,4,1,6,7', '1,2,3,4,2,3,4', '1,2,3,4,2,5,6', '1,2,3,4,2,7,8', '1,2,3,4,3,4,5', '1,2,3,4,3,6,7', '1,2,3,4,3,8,9', '5,6,7,8,1,2,3', '5,6,7,8,1,4,5', '5,6,7,8,1,6,7', '5,6,7,8,2,3,4', '5,6,7,8,2,5,6', '5,6,7,8,2,7,8', '5,6,7,8,3,4,5', '5,6,7,8,3,6,7', '5,6,7,8,3,8,9', '9,10,11,12,1,2,3', '9,10,11,12,1,4,5', '9,10,11,12,1,6,7', '9,10,11,12,2,3,4', '9,10,11,12,2,5,6', '9,10,11,12,2,7,8', '9,10,11,12,3,4,5', '9,10,11,12,3,6,7', '9,10,11,12,3,8,9'}
     
     query = "SELECT S.*, M.* FROM small S JOIN medium M ON (S.a = M.a)"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     assert set(out) == {'1,2,3,4,1,2,3', '1,2,3,4,1,6,7', '1,2,3,4,1,4,5'}
     
     query = "SELECT S.*, S1.b, M.* FROM small S JOIN medium M JOIN small S1 ON (S.a = M.a AND S.b = S1.b)"
-    out = Hangman.execute(query)
+    out = Hangman.execute(query, BitmapIndex)
     # We don't support printing in order of column projection
     print(out)
     assert set(out) == {'1,2,3,4,2,1,2,3', '1,2,3,4,2,1,6,7', '1,2,3,4,2,1,4,5'}
