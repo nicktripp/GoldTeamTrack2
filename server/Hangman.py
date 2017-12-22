@@ -63,18 +63,15 @@ class Hangman:
         return projector
 
     @staticmethod
-    # @timeit("4. Executing the Plan")
+    @timeit("4. Executing the Plan")
     def execute_plan(facade, optimizer):
         results = facade.execute_plan(optimizer.projection_columns, optimizer.tables, optimizer.execution_conditions)
         return results
 
     @staticmethod
-    # @timeit("3. Preparing the QueryFacade")
-    def prepare_facade(optimizer, indexType):
-        facade = QueryFacade(optimizer.tables, optimizer.required_cols, optimizer.projection_columns, indexType)
     @timeit("3. Preparing the QueryFacade")
     def prepare_facade(optimizer, indexType):
-        facade = QueryFacade(optimizer.tables, optimizer.required_cols, indexType)
+        facade = QueryFacade(optimizer.tables, optimizer.required_cols, optimizer.projection_columns, indexType)
         return facade
 
     @staticmethod

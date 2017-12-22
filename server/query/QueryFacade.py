@@ -13,7 +13,7 @@ class QueryFacade:
     We will hide the table querying interface behind this class
     """
 
-    def __init__(self, tables, condition_columns, indexType):
+    def __init__(self, tables, condition_columns, projection_columns, indexType):
         """
         Data sources are supplied by the QueryOptimizer
         :param tables:
