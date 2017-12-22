@@ -1,13 +1,14 @@
 from server.Hangman import Hangman
+from server.indexing import BitmapIndex
 
 if __name__ == "__main__":
     # query = "SELECT S.a FROM small S"
     # out = Hangman.execute(query)
     # assert out == ['1', '5', '9']
     #
-    # query = "SELECT S.a, S.b FROM small S"
-    # out = Hangman.execute(query)
-    # assert out == ['1,2', '5,6', '9,10']
+    query = "SELECT S.a, S.b FROM small S"
+    out = Hangman.execute(query, BitmapIndex.BitmapIndex)
+    assert out == ['1,2', '5,6', '9,10']
     #
     # query = "SELECT S.* FROM small S"
     # out = Hangman.execute(query)
@@ -194,11 +195,11 @@ if __name__ == "__main__":
     # out = Hangman.execute(query)
     # assert set(out) == {'1,2,3,4,1,2,3', '1,2,3,4,1,6,7', '1,2,3,4,1,4,5'}
 
-    query = "SELECT S.*, S1.b, M.* FROM small S JOIN medium M JOIN small S1 ON (S.a = M.a AND S.b = S1.b)"
-    out = Hangman.execute(query)
-    print(out)
-    assert set(out) == {'1,2,3,4,1,2,3,4,1,2,3', '1,2,3,4,1,2,3,4,1,6,7', '1,2,3,4,1,2,3,4,1,4,5'}
-
+    # query = "SELECT S.*, S1.b, M.* FROM small S JOIN medium M JOIN small S1 ON (S.a = M.a AND S.b = S1.b)"
+    # out = Hangman.execute(query)
+    # print(out)
+    # assert set(out) == {'1,2,3,4,1,2,3,4,1,2,3', '1,2,3,4,1,2,3,4,1,6,7', '1,2,3,4,1,2,3,4,1,4,5'}
+    #
 
 
 
