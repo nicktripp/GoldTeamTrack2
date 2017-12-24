@@ -17,7 +17,7 @@ class Hangman:
     """
 
     @staticmethod
-    @timeit("0. Starting Query")
+    # @timeit("0. Starting Query")
     def execute(query, indexType=BTreeIndex):
         """
         Parses the SQL statements
