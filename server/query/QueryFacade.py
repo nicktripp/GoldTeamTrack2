@@ -71,7 +71,7 @@ class QueryFacade:
             eval_result = self.eval_conditions(conds)
             return eval_result.generate_tuples()
 
-    @timeit("Evaluating Comparison")
+    # @timeit("Evaluating Comparison")
     def eval_comparison(self, comparison, negated):
         """
         Performs the comparison by looking up the proper indexes for the left and right hand side of the comparison.
@@ -120,7 +120,7 @@ class QueryFacade:
                         values[v] = set(left_rows)
             return left_tup_idx, right_tup_idx, values
 
-    @timeit("Evaluating Conditions")
+    # @timeit("Evaluating Conditions")
     def eval_conditions(self, conditions):
         """
         Produces a map from table index to list of locations and
@@ -172,7 +172,7 @@ class QueryFacade:
 
         return union_result
 
-    @timeit("Intersecting Evaluation")
+    # @timeit("Intersecting Evaluation")
     def _intersect_evaluation(self, eval_result, evaluation):
         """
         Can intersect the result from eval_comparison with the results from eval_conditions2
@@ -202,7 +202,7 @@ class QueryFacade:
 
             return eval_result
 
-    @timeit("Unionizing Evaluation")
+    # @timeit("Unionizing Evaluation")
     def _union_evaluation(self, union_result, eval_result):
         """
         Can union the result from eval_comparison with the results from eval_conditions2
@@ -211,7 +211,7 @@ class QueryFacade:
         """
         return union_result.union(eval_result)
 
-    @timeit("Negating Results")
+    # @timeit("Negating Results")
     def _negate(self, result):
         """
         Returns the complement of the results, using the mem_locs store by each TableIndexer

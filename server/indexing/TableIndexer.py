@@ -3,6 +3,7 @@ import pickle
 
 from server.indexing import BTreeIndex
 from server.query.TableProjector import TableProjector
+from server.query.Table import Table
 
 
 class TableIndexer:
@@ -19,11 +20,17 @@ class TableIndexer:
         else:
             self._generate_indices(cols_to_load)
 
+        # generate col_types if they don't exist
+        if not self.table.col_types_exist():
+            self.table.read_col_types()
+
         # load or generate the memory locations
         if self._all_mem_locs_exist():
             self._load_mem_locs()
         else:
             self._read_mem_locs()
+
+
 
     def path_for_column(self, col_name):
         return TableIndexer.relative_path + self._table.name + "_" + col_name + ".idx"

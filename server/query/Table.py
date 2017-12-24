@@ -1,9 +1,11 @@
 import datetime
 import os
+import pickle
 from dateutil.parser import parse as date_parse
 
 from server.query.NoneVal import NoneVal
 from server.query.TableProjector import TableProjector
+
 
 
 class Table:
@@ -21,7 +23,11 @@ class Table:
 
         # Check the types of the columns
         self._column_types = {}
-        self._check_column_types()
+
+        if self.col_types_exist():
+            self._load_col_types()
+        else:
+            self.read_column_types()
 
     def __repr__(self):
         if self._nickname is None:
@@ -52,7 +58,16 @@ class Table:
     def filename(self):
         return Table.relative_path % self.name
 
-    def _check_column_types(self):
+    def col_types_exist(self):
+        if not os.path.exists(self.filename + "_col_types.pickle"):
+            return False
+        return True
+
+    def _load_col_types(self):
+        with open(self.filename + "_col_types.pickle", 'rb') as f:
+            self._column_types = pickle.load(f)
+
+    def read_column_types(self):
         with open(self.filename, encoding='utf8') as f:
             cols = f.readline()[:-1].split(',')
             i = 0
@@ -76,6 +91,9 @@ class Table:
                 # Read several rows past once every  type has been seen once
                 if len(self._column_types) == len(self._column_index):
                     i += 1
+
+        with open(self.filename + "_col_types.pickle", 'wb') as f:
+            pickle.dump(self._column_types, f, pickle.HIGHEST_PROTOCOL)
 
     def parse_value_for_column(self, value, column_name):
         t = self._column_types[column_name]
