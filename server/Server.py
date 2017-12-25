@@ -3,38 +3,40 @@ from __future__ import print_function # In python 2.7
 from flask import Flask
 from flask import render_template
 from flask import request
-from flask import make_response
 
-from server.query.Parser import Parser
-from server.query.SQLParsingError import SQLParsingError
+from os import listdir
+from os.path import isfile, join
+
+from server.Hangman import Hangman
 
 import sys
 
 app = Flask(__name__)
+data_path = "./data/"
 
-@app.route('/')
-def hello_world():
-  return "Hello, World!"
-
-@app.route('/hello/<name>/')
-def hello(name=None):
-    return render_template('hello.html', name=name)
 
 @app.route('/query/', methods=['GET','POST'])
 def query():
-    if(request.method == 'POST'):
+    if request.method == 'POST':
         sql_str = request.form['query']
         print('[SQL]: \'' + sql_str + '\'', file=sys.stderr)
 
         # Send query to query parser
-        p = Parser(sql_str)
-        try:
-            ret = p.parse_select_from_where()
-        except SQLParsingError as err:
-            ret = "[ERROR]: SQL Parsing Error: " + str(err)
-            print(ret, file=sys.stderr)
+        ret_val = Hangman.execute(sql_str)
+        print(ret_val, file=sys.stderr)
 
-        return ret
+        return ret_val
 
     else:
         return render_template('querypage.html')
+
+
+@app.route('/list_tables/', methods=['GET'])
+def list_tables():
+    csv_files = [f for f in listdir(data_path) if isfile(join(data_path, f)) and f.endswith(".csv")]
+    ret_val = ""
+    for i,file in enumerate(csv_files):
+        ret_val += file
+        if i != len(csv_files)-1:
+            ret_val += "\n"
+    return ret_val

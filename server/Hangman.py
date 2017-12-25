@@ -18,7 +18,7 @@ class Hangman:
 
     @staticmethod
     # @timeit("0. Starting Query")
-    def execute(query, indexType=BTreeIndex):
+    def execute(query, index_type=BTreeIndex):
         """
         Parses the SQL statements
         Creates an execution plan
@@ -26,6 +26,9 @@ class Hangman:
         Aggregates the results of the execution
 
         :param query: SQL query
+        :param index_type: class of indextype. One of:
+            - BTreeIndex
+            - BitmapIndex
         :return: query result
         """
 
@@ -39,7 +42,7 @@ class Hangman:
             optimizer = Hangman.optimize(parsed_query)
 
             # Execute the plan through the facade
-            facade = Hangman.prepare_facade(optimizer, indexType)
+            facade = Hangman.prepare_facade(optimizer, index_type)
             results = Hangman.execute_plan(facade, optimizer)
 
             # Aggregate the results
@@ -70,8 +73,8 @@ class Hangman:
 
     @staticmethod
     @timeit("3. Preparing the QueryFacade")
-    def prepare_facade(optimizer, indexType):
-        facade = QueryFacade(optimizer.tables, optimizer.required_cols, optimizer.projection_columns, indexType)
+    def prepare_facade(optimizer, index_type):
+        facade = QueryFacade(optimizer.tables, optimizer.required_cols, optimizer.projection_columns, index_type)
         return facade
 
     @staticmethod
