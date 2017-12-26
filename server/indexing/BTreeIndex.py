@@ -75,113 +75,112 @@ class BTreeIndex:
         :return: set of row locations in file
         """
         if (comparison == '=' and not negated) or (comparison == '<>' and negated):
-            return self.equal(key)
+            yield from self.equal(key)
         elif (comparison == '<' and not negated) or (comparison == '>=' and negated):
-            return self.lessThan(key)
+            yield from self.lessThan(key)
         elif (comparison == '<=' and not negated) or (comparison == '>' and negated):
-            return self.lessThanOrEqual(key)
+            yield from self.lessThanOrEqual(key)
         elif (comparison == '<>' and not negated) or (comparison == '=' and negated):
-            return self.notEqual(key)
+            yield from self.notEqual(key)
         elif (comparison == '>' and not negated) or (comparison == '<=' and negated):
-            return self.greaterThan(key)
+            yield from self.greaterThan(key)
         elif (comparison == '>=' and not negated) or (comparison == '<' and negated):
-            return self.greaterThanOrEqual(key)
+            yield from self.greaterThanOrEqual(key)
         elif comparison == 'LIKE':
-            return self.like(key, negated)
-        return None
+            yield from self.like(key, negated)
 
     def equal(self, key):
         values = self.btree[key]
         if values is not None:
-            return list(values)
-        else:
-            return []
+            for v in values:
+                yield v
 
     def notEqual(self, key):
         val, key_block = self.btree.get_with_block(key)
         val, block = self.btree.get_with_block(self.btree.smallest)
-        ret = []
         while block != key_block:
             for i in range(len(block.keys)):
-                ret.extend(list(block.values[i]))
+                for v in block.values[i]:
+                    yield v
             block = block.next_leaf
 
         for i in range(len(block.keys)):
             if key != block.keys[i]:
-                ret.extend(list(block.values[i]))
+                for v in block.values[i]:
+                    yield v
         block = block.next_leaf
 
         while block is not None:
             for i in range(len(block.keys)):
-                ret.extend(list(block.values[i]))
+                for v in block.values[i]:
+                    yield v
             block = block.next_leaf
-        return ret
 
     def lessThan(self, key):
         val, stop_block = self.btree.get_with_block(key)
         val, block = self.btree.get_with_block(self.btree.smallest)
-        ret = []
         # Everything is less than until we get to the block that holds the matching key
         while stop_block != block:
             for i in range(len(block.keys)):
-                ret.extend(list(block.values[i]))
+                for v in block.values[i]:
+                    yield v
             block = block.next_leaf
 
         # This is the only block that does a comparison
         for i in range(len(block.keys)):
             if key <= stop_block.keys[i]:
                 break
-            ret.extend(list(block.values[i]))
-        return ret
+            for v in block.values[i]:
+                yield v
 
     def lessThanOrEqual(self, key):
         val, stop_block = self.btree.get_with_block(key)
         val, block = self.btree.get_with_block(self.btree.smallest)
-        ret = []
         # Everything is less than until we get to the block that holds the matching key
         while stop_block != block:
             for i in range(len(block.keys)):
-                ret.extend(list(block.values[i]))
+                for v in block.values[i]:
+                    yield v
             block = block.next_leaf
 
         # This is the only block that does a comparison
         for i in range(len(block.keys)):
             if key < stop_block.keys[i]:
                 break
-            ret.extend(list(block.values[i]))
-        return ret
+            for v in block.values[i]:
+                yield v
 
     def greaterThan(self, key):
         val, block = self.btree.get_with_block(key)
-        ret = []
         while True:
             for i in range(len(block.keys)):
                 if block.keys[i] > key:
-                    ret.extend(list(block.values[i]))
+                    for v in block.values[i]:
+                        yield v
             if block.next_leaf is None:
-                return ret
+                break
             block = block.next_leaf
 
     def greaterThanOrEqual(self, key):
         val, block = self.btree.get_with_block(key)
-        ret = []
         while True:
             for i in range(len(block.keys)):
                 if block.keys[i] >= key:
-                    ret.extend(list(block.values[i]))
+                    for v in block.values[i]:
+                        yield v
             if block.next_leaf is None:
-                return ret
+                break
             block = block.next_leaf
 
     def like(self, key, negated):
         val, block = self.btree.get_with_block(self.btree.smallest)
         pattern = re.compile(key.replace("%", ".*"))
-        ret = []
         while True:
             for i in range(len(block.keys)):
                 check = pattern.match(block.keys[i])
                 if (check and not negated) or (not check and negated):
-                    ret.extend(list(block.values[i]))
+                    for v in block.values[i]:
+                        yield v
             if block.next_leaf is None:
-                return ret
+                break
             block = block.next_leaf

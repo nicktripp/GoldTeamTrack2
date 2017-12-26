@@ -3,53 +3,53 @@ from server.indexing.BitmapIndex import BitmapIndex
 from server.indexing.BTreeIndex import BTreeIndex
 
 if __name__ == "__main__":
-    #
-    # query = "SELECT S.a FROM small S"
-    # out = Hangman.execute(query, BTreeIndex)
-    # assert out == ['1', '5', '9']
-    #
-    # query = "SELECT S.a FROM small S"
-    # out = Hangman.execute(query, BitmapIndex)
-    # assert out == ['1', '5', '9']
-    #
-    # query = "SELECT S.b * 3 FROM small S WHERE S.c / 2 < 4"
-    # out = Hangman.execute(query, BitmapIndex)
-    # print(out)
-    # assert out == ['2', '6']
-    # # We don't support the projection column transformation
-    # # assert out == ['6', '18']
-    #
-    # query = "SELECT S.* FROM small S"
-    # out = Hangman.execute(query, BitmapIndex)
-    # assert out == ['1,2,3,4', '5,6,7,8', '9,10,11,12']
-    #
-    # query = "SELECT * FROM small S"
-    # out = Hangman.execute(query, BitmapIndex)
-    # assert out == ['1,2,3,4', '5,6,7,8', '9,10,11,12']
-    #
-    # query = "SELECT * FROM small S WHERE S.a > 1"
-    # out = Hangman.execute(query, BitmapIndex)
-    # assert set(out) == {'5,6,7,8', '9,10,11,12'}
-    #
-    # query = "SELECT * FROM small S WHERE (S.a > 1)"
-    # out = Hangman.execute(query, BitmapIndex)
-    # assert set(out) == {'5,6,7,8', '9,10,11,12'}
-    #
-    # query = "SELECT * FROM small S WHERE NOT (S.a > 1)"
-    # out = Hangman.execute(query, BitmapIndex)
-    # assert out == ['1,2,3,4']
-    #
-    # query = "SELECT * FROM small S WHERE NOT S.a > 1"
-    # out = Hangman.execute(query, BitmapIndex)
-    # assert out == ['1,2,3,4']
-    #
-    # query = "SELECT * FROM small S WHERE NOT (S.a = 1 OR S.a = 5)"
-    # out = Hangman.execute(query, BitmapIndex)
-    # assert out == ['9,10,11,12']
-    #
-    # query = "SELECT * FROM small S WHERE S.b > 2 AND (NOT (S.a = 5))"
-    # out = Hangman.execute(query, BitmapIndex)
-    # assert out == ['9,10,11,12']
+
+    query = "SELECT S.a FROM small S"
+    out = Hangman.execute(query, BTreeIndex)
+    assert out == ['1', '5', '9']
+
+    query = "SELECT S.a FROM small S"
+    out = Hangman.execute(query, BitmapIndex)
+    assert out == ['1', '5', '9']
+
+    query = "SELECT S.b * 3 FROM small S WHERE S.c / 2 < 4"
+    out = Hangman.execute(query, BitmapIndex)
+    print(out)
+    assert out == ['2', '6']
+    # We don't support the projection column transformation
+    # assert out == ['6', '18']
+
+    query = "SELECT S.* FROM small S"
+    out = Hangman.execute(query, BitmapIndex)
+    assert out == ['1,2,3,4', '5,6,7,8', '9,10,11,12']
+
+    query = "SELECT * FROM small S"
+    out = Hangman.execute(query, BitmapIndex)
+    assert out == ['1,2,3,4', '5,6,7,8', '9,10,11,12']
+
+    query = "SELECT * FROM small S WHERE S.a > 1"
+    out = Hangman.execute(query, BitmapIndex)
+    assert set(out) == {'5,6,7,8', '9,10,11,12'}
+
+    query = "SELECT * FROM small S WHERE (S.a > 1)"
+    out = Hangman.execute(query, BitmapIndex)
+    assert set(out) == {'5,6,7,8', '9,10,11,12'}
+
+    query = "SELECT * FROM small S WHERE NOT (S.a > 1)"
+    out = Hangman.execute(query, BitmapIndex)
+    assert out == ['1,2,3,4']
+
+    query = "SELECT * FROM small S WHERE NOT S.a > 1"
+    out = Hangman.execute(query, BitmapIndex)
+    assert out == ['1,2,3,4']
+
+    query = "SELECT * FROM small S WHERE NOT (S.a = 1 OR S.a = 5)"
+    out = Hangman.execute(query, BitmapIndex)
+    assert out == ['9,10,11,12']
+
+    query = "SELECT * FROM small S WHERE S.b > 2 AND (NOT (S.a = 5))"
+    out = Hangman.execute(query, BitmapIndex)
+    assert out == ['9,10,11,12']
 
     query = 'SELECT * FROM small_text S WHERE NOT S.a LIKE "%ac%"'
     out = Hangman.execute(query, BitmapIndex)
@@ -79,8 +79,9 @@ if __name__ == "__main__":
     out = Hangman.execute(query, BitmapIndex)
     assert out == ["abc,abd,abe,abf,abg"]
  
-    query = "SELECT S1.* FROM small S1, small S2 WHERE S1.a > 1 AND S2.a < 9"
+    query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a > 1 AND S2.a < 9"
     out = Hangman.execute(query, BitmapIndex)
+    print(out)
     assert set(out) == {'5,6,7,8', '5,6,7,8', '9,10,11,12', '9,10,11,12'}
     
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a > 1 AND S2.a < 9"
