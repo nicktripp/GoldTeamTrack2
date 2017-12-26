@@ -85,6 +85,12 @@ class ResultGenerator:
                 elif table_pair[1] == table_index:
                     self._right_pairs[table_index].append(table_pair)
 
+        for single in self._single_constraints:
+            self._single_constraints[single] = list(self._single_constraints[single])
+
+        for double in self._double_constraints:
+            self._double_constraints[double] = list(self._double_constraints[double])
+
         yield from self._generate_recurse(0, [])
 
     def _generate_recurse(self, table_index, accumulation):
@@ -95,9 +101,9 @@ class ResultGenerator:
 
         # Find the possible values for this table considering the single constraints
         if table_index not in self._single_constraints or self._single_constraints[table_index] is None:
-            values = self._mem_locs[table_index]
+            values = set(self._mem_locs[table_index])
         else:
-            values = self._single_constraints[table_index]
+            values = set(self._single_constraints[table_index])
 
         # filter values depending on previous accumulation values
         if table_index in self._right_pairs:
@@ -108,12 +114,13 @@ class ResultGenerator:
 
         # filter values depending on following accumulation values
         if table_index in self._left_values:
-            values &= self._left_values[table_index]
+            values &= set(self._left_values[table_index])
 
         # Add another place to the accumulation and yield over each potential value
-        accumulation.append(-1)
+        if len(accumulation) < table_index + 1:
+            accumulation.append(-1)
         for value in values:
-            accumulation[-1] = value
+            accumulation[table_index] = value
             yield from self._generate_recurse(table_index + 1, accumulation)
 
     def __iand__(self, other):
