@@ -10,6 +10,7 @@ class ResultGenerator:
         # used in tuple generation
         self._right_pairs = defaultdict(list)
         self._left_values = {}
+        self._ors = []
 
         """
         If a key value pair is not present in _single_constraints or _double_constraints, then all row locations are
@@ -31,7 +32,7 @@ class ResultGenerator:
         :param gen2: another generator
         :return: a generator over the intersection
         """
-        return (_ for _ in ({_ for _ in gen1} & {_ for _ in gen2}))
+        return [_ for _ in ({_ for _ in gen1} & {_ for _ in gen2})]
 
     def _union_generators(self, gen1, gen2):
         """
@@ -41,15 +42,23 @@ class ResultGenerator:
         :param gen2: another generator
         :return: a generator over the union
         """
-        return (_ for _ in ({_ for _ in gen1} | {_ for _ in gen2}))
+        return [_ for _ in ({_ for _ in gen1} | {_ for _ in gen2})]
 
     def _mod_constraints(self, _constraints, _func, key, generator):
         if key not in _constraints:
             # The constraints have not not been added for this key
-            _constraints[key] = generator
+            _constraints[key] = [_ for _ in generator]
         else:
             # Constraints have been added for the key, perform the intersection or union and assign a new generator
             _constraints[key] = _func(generator, _constraints[key])
+
+    def _sim_mod_constraints(self, _constraints, _func, key, generator):
+        if key not in _constraints:
+            # The constraints have not not been added for this key
+            return [_ for _ in generator]
+        else:
+            # Constraints have been added for the key, perform the intersection or union and assign a new generator
+            return _func(generator, _constraints[key])
 
     def reduce_single_constraints(self, table, constraint_generator):
         self._mod_constraints(self._single_constraints, self._intersect_generators, table, constraint_generator)
@@ -74,7 +83,14 @@ class ResultGenerator:
         self._right_pairs = defaultdict(list)
         self._left_values = {}
 
-        # lookup the dependencies of each tuple
+        # capture constraints as lists
+        for single in self._single_constraints:
+            self._single_constraints[single] = list(self._single_constraints[single])
+
+        for double in self._double_constraints:
+            self._double_constraints[double] = list(self._double_constraints[double])
+
+            # lookup the dependencies of each tuple
         for table_index in range(self._tuple_length):
             for table_pair in self._double_constraints:
                 if table_pair[0] == table_index:
@@ -85,13 +101,10 @@ class ResultGenerator:
                 elif table_pair[1] == table_index:
                     self._right_pairs[table_index].append(table_pair)
 
-        for single in self._single_constraints:
-            self._single_constraints[single] = list(self._single_constraints[single])
-
-        for double in self._double_constraints:
-            self._double_constraints[double] = list(self._double_constraints[double])
-
         yield from self._generate_recurse(0, [])
+
+        for ored in self._ors:
+            yield from ored.generate_tuples()
 
     def _generate_recurse(self, table_index, accumulation):
         if table_index == self._tuple_length:
@@ -123,29 +136,72 @@ class ResultGenerator:
             accumulation[table_index] = value
             yield from self._generate_recurse(table_index + 1, accumulation)
 
+    def _iand_helper(self, other, self_single_constraints, self_double_constraints):
+        for single in self_single_constraints:
+            other._mod_constraints(other._single_constraints, other._intersect_generators,
+                                   single, self_single_constraints[single])
+
+        for double in self_double_constraints:
+            other._mod_constraints(other._double_constraints, other._intersect_generators,
+                                   double, self_double_constraints[double])
+
+    def __and__(self, other):
+        """
+        Does not consider the ORed results
+        :param other:
+        :return:
+        """
+        rg = ResultGenerator(self._tuple_length, self._mem_locs)
+
+        for single in self._single_constraints:
+            rg._single_constraints[single] = self._sim_mod_constraints(other._single_constraints,
+                                                                       other._intersect_generators,
+                                                                       single, self._single_constraints[single])
+
+        for single in other._single_constraints:
+            rg._single_constraints[single] = self._sim_mod_constraints(self._single_constraints,
+                                                                       self._intersect_generators,
+                                                                       single, other._single_constraints[single])
+
+        for double in other._double_constraints:
+            rg._double_constraints[double] = self._sim_mod_constraints(other._double_constraints,
+                                                                       other._intersect_generators,
+                                                                       double, self._double_constraints[double])
+
+        for double in other._double_constraints:
+            rg._double_constraints[double] = self._sim_mod_constraints(self._double_constraints,
+                                                                       self._intersect_generators,
+                                                                       double, other._double_constraints[double])
+        return rg
+
     def __iand__(self, other):
         assert isinstance(other, ResultGenerator)
 
-        for single in other._single_constraints:
-            self._mod_constraints(self._single_constraints, self._intersect_generators,
-                                  single, other._single_constraints[single])
+        rg = self & other
 
-        for double in other._double_constraints:
-            self._mod_constraints(self._double_constraints, self._intersect_generators,
-                                  double, other._double_constraints[double])
+        ors = []
+        for ored in other._ors:
+            # AND rg with all of the ors of other
+            ors.append(self & ored)
 
+        for ored in self._ors:
+            # AND all the ORs with other and its ors
+            ors.append(ored & other)
+            ors.extend([ored & other_ored for other_ored in other._ors])
+
+        self._single_constraints = rg._single_constraints
+        self._double_constraints = rg._double_constraints
+        self._ors = ors
         return self
 
     def __ior__(self, other):
         assert isinstance(other, ResultGenerator)
 
-        for single in other._single_constraints:
-            self._mod_constraints(self._single_constraints, self._union_generators,
-                                  single, other._single_constraints[single])
-
-        for double in other._double_constraints:
-            self._mod_constraints(self._double_constraints, self._union_generators,
-                                  double, other._double_constraints[double])
+        # Append the list of ORed results
+        ors = other._ors
+        other._ors = []
+        self._ors.append(other)
+        self._ors.extend(ors)
 
         return self
 
@@ -164,3 +220,11 @@ class ResultGenerator:
         for double in self._double_constraints:
             s1 = set(self._double_constraints[double])
             self._double_constraints[double] = self._negate_double_generator(double[0], double[1], s1)
+
+        # !(a | b) is the equivalent of of !a & !b
+        ors = self._ors
+        self._ors = [] # Remove the ors from recursion
+
+        for ored in ors:
+            ored.negate()
+            self &= ored
