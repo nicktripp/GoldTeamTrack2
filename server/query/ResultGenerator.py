@@ -163,7 +163,7 @@ class ResultGenerator:
                                                                        self._intersect_generators,
                                                                        single, other._single_constraints[single])
 
-        for double in other._double_constraints:
+        for double in self._double_constraints:
             rg._double_constraints[double] = self._sim_mod_constraints(other._double_constraints,
                                                                        other._intersect_generators,
                                                                        double, self._double_constraints[double])
