@@ -11,6 +11,8 @@ from server.Hangman import Hangman
 
 import sys
 
+from server.query.SQLParsingError import SQLParsingError
+
 app = Flask(__name__)
 data_path = "./data/"
 
@@ -22,10 +24,21 @@ def query():
         print('[SQL]: \'' + sql_str + '\'', file=sys.stderr)
 
         # Send query to query parser
-        ret_val = Hangman.execute(sql_str)
-        print(ret_val, file=sys.stderr)
+        try:
+            ret = Hangman.execute(sql_str)
+            ret_str = ""
+            for i, line in enumerate(ret):
+                ret_str += line
+                if i != len(ret) - 1:
+                    ret_str += "\n"
 
-        return ret_val
+            print("\n---\nPrinting records:\n"+ret_str, file=sys.stderr)
+            resp = app.make_response((ret_str, {'SQL-Error': False}))
+
+        except SQLParsingError as e:
+            resp = app.make_response((str(e), {'SQL-Error': True}))
+
+        return resp
 
     else:
         return render_template('querypage.html')
@@ -40,3 +53,7 @@ def list_tables():
         if i != len(csv_files)-1:
             ret_val += "\n"
     return ret_val
+
+
+if __name__ == '__main__':
+    app.run()

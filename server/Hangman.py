@@ -49,9 +49,12 @@ class Hangman:
             projector = Hangman.prepare_projector(optimizer)
             query_output = Hangman.project(optimizer, projector, results)
             return query_output
+
         except SQLParsingError as e:
-            return e.message
+
+            print(e)
             # TODO: throw different errors and handle them
+            raise
 
     @staticmethod
     @timeit("6. Projecting the Results")
