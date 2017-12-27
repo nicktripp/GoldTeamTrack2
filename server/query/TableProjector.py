@@ -13,6 +13,7 @@ class TableProjector:
     def __init__(self, tables, projection_columns):
         self._tables = tables
         self._projection_columns = projection_columns
+        self._math_cols = [i for i, proj_col in enumerate(self._projection_columns) if proj_col.op is not None]
 
         # Fill map of table to projection columns index in row of table
         self._columns_to_read_by_table = defaultdict(set)
@@ -76,6 +77,8 @@ class TableProjector:
                 cols = table_projections[i][v]
                 for c, p in col_proj:
                     output[-1][p] = cols[c]
+            for c in self._math_cols:
+                output[-1][c] = str(self._projection_columns[c].transform(float(output[-1][c])))
             output[-1] = ','.join(output[-1])
 
         # Ensure DISTINCT output

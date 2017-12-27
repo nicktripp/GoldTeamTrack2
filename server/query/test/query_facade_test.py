@@ -14,10 +14,19 @@ if __name__ == "__main__":
 
     query = "SELECT S.b * 3 FROM small S WHERE S.c / 2 < 4"
     out = Hangman.execute(query, BTreeIndex)
-    print(out)
-    assert out == ['2', '6']
-    # We don't support the projection column transformation
-    # assert out == ['6', '18']
+    assert out == ['6.0', '18.0']
+
+    query = "SELECT S.b / 2 FROM small S WHERE S.c / 2 < 4"
+    out = Hangman.execute(query, BTreeIndex)
+    assert out == ['1.0', '3.0']
+
+    query = "SELECT S.b + 3 FROM small S WHERE S.c / 2 < 4"
+    out = Hangman.execute(query, BTreeIndex)
+    assert out == ['5.0', '9.0']
+
+    query = "SELECT S.b - 3 FROM small S WHERE S.c / 2 < 4"
+    out = Hangman.execute(query, BTreeIndex)
+    assert out == ['-1.0', '3.0']
 
     query = "SELECT S.* FROM small S"
     out = Hangman.execute(query, BTreeIndex)
