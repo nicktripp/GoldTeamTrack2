@@ -53,7 +53,7 @@ class Hangman:
     @staticmethod
     @timeit("6. Projecting the Results")
     def project(optimizer, projector, results):
-        query_output = projector.aggregate(results, optimizer.distinct)
+        query_output = projector.project(results, optimizer.distinct)
         return query_output
 
     @staticmethod

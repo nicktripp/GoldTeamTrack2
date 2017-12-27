@@ -215,15 +215,15 @@ class ResultGenerator:
         for single in self._single_constraints:
             mem_locs = self._mem_locs[single]
             diff = set(mem_locs) - set(self._single_constraints[single])
-            self._single_constraints[single] = (_ for _ in diff)
+            self._single_constraints[single] = list(diff)
 
         for double in self._double_constraints:
             s1 = set(self._double_constraints[double])
-            self._double_constraints[double] = self._negate_double_generator(double[0], double[1], s1)
+            self._double_constraints[double] = list(self._negate_double_generator(double[0], double[1], s1))
 
         # !(a | b) is the equivalent of of !a & !b
         ors = self._ors
-        self._ors = [] # Remove the ors from recursion
+        self._ors = []  # Remove the ors from recursion
 
         for ored in ors:
             ored.negate()
