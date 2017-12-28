@@ -117,7 +117,7 @@ class QueryFacade:
                            comparison,
                            negated):
         # Loop over the values of the index with fewer items
-        if sum(1 for _ in right_index.items()) > sum(1 for _ in left_index.items()):
+        if right_index.size() > left_index.size():
             left_index, right_index = right_index, left_index
             left_tup_idx, right_tup_idx = right_tup_idx, left_tup_idx
             left_column, right_column = right_column, left_column

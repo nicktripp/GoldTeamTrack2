@@ -65,6 +65,9 @@ class BTreeIndex:
     def items(self):
         return self.btree.items()
 
+    def size(self):
+        return self.btree.n
+
     def op(self, key, comparison, negated=False):
         """
         The key will be compared against all of the keys in the index with the provided comparison
