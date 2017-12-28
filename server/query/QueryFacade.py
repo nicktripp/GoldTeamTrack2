@@ -1,10 +1,10 @@
 import os
+# from multiprocessing.pool import Pool
 
 from server.indexing.TableIndexer import TableIndexer
 from server.query.Comparison import Comparison
-from server.query.EvaluationResult import EvaluationResult
+from server.query.ResultGenerator import ResultGenerator
 from server.query.Table import Table
-from server.Timer import timeit
 
 
 class QueryFacade:
@@ -12,27 +12,32 @@ class QueryFacade:
     We will hide the table querying interface behind this class
     """
 
-    def __init__(self, tables, condition_columns, projection_columns, indexType):
+    def __init__(self, tables, condition_columns, projection_columns, index_type):
         """
         Data sources are supplied by the QueryOptimizer
         :param tables:
         """
+        # self._pool = Pool(4)
+
         self._tables = tables
         self._proj_columns = projection_columns
         self._table_indices = {}
 
         for tbl in self._tables:
             tbl_cols = [col for col in condition_columns if col.table == tbl]
-            self._table_indices[repr(tbl)] = TableIndexer(tbl, tbl_cols, index_class=indexType)
+            self._table_indices[repr(tbl)] = TableIndexer(tbl, tbl_cols, index_class=index_type)
+
+    # def close_pool(self):
+    #     self._pool.close()
 
     @staticmethod
-    def is_query_indexed(tbls):
+    def is_query_indexed(tables):
         """
         Checks to see if the tables have been indexed with the index saved to the table_name.idx
-        :param tbls: tables that need to have an index
+        :param tables: tables that need to have an index
         :return: boolean
         """
-        for tbl in tbls:
+        for tbl in tables:
             if not os.path.exists(Table.relative_path + tbl.name + '.idx'):
                 return False
         return True
@@ -40,7 +45,6 @@ class QueryFacade:
     def index_for_column(self, col):
         tbl = col.table
         return self._table_indices[repr(tbl)].column_indices[col.name]
-
 
     def execute_plan(self, cols, tbls, conds):
         """
@@ -65,11 +69,12 @@ class QueryFacade:
             tbl_rows = []
             for tbl in tbls:
                 tbl_rows.append(self._table_indices[repr(tbl)].mem_locs)
-            return EvaluationResult.cartesian_generator(tbl_rows)
+            result = ResultGenerator(len(tbls), self.get_mem_locs(), [table.filename for table in self._tables])
+            return result.generate_tuples()
         else:
             # Handle queries with conditions
-            eval_result = self.eval_conditions(conds)
-            return eval_result.generate_tuples()
+            result = self.eval_conditions(conds)
+            return result.generate_tuples()
 
     # @timeit("Evaluating Comparison")
     def eval_comparison(self, comparison, negated):
@@ -91,36 +96,53 @@ class QueryFacade:
             right_constant = comparison.left_column(self._tables).invert_transform(right_constant)
 
             # Perform the comparison over the index
-            result = left_index.op(right_constant, comparison.operator, negated)
+            single_generator = left_index.op(right_constant, comparison.operator, negated)
 
             # Reduce all of the key to set(location) entries to a set of tuples with the locations
             table_index = self._tables.index(comparison.left_column(self._tables).table)
-            return table_index, result
+            return table_index, single_generator
         else:
             # Get the index for the right hand side of the comparison
             right_column = comparison.right_column_or_constant(self._tables)
             right_index = self.index_for_column(right_column)
 
             # Iterate over the values of the right index
-            values = {}
             left_tup_idx = self._tables.index(comparison.left_column(self._tables).table)
             right_tup_idx = self._tables.index(comparison.right_column(self._tables).table)
-            for k, vs in right_index.items():
-                # Transform key if column was given math requirements S.a + 5
+            double_generator = self.columns_comparison(left_index, left_tup_idx, right_index, right_tup_idx,
+                                                       left_column, right_column, comparison, negated)
+            return left_tup_idx, right_tup_idx, double_generator
+
+    def columns_comparison(self, left_index, left_tup_idx, right_index, right_tup_idx, left_column, right_column,
+                           comparison,
+                           negated):
+        # Loop over the values of the index with fewer items
+        if right_index.size() > left_index.size():
+            left_index, right_index = right_index, left_index
+            left_tup_idx, right_tup_idx = right_tup_idx, left_tup_idx
+            left_column, right_column = right_column, left_column
+
+        if comparison.operator == '=':
+            yield from left_index.index_equals_index_op(right_index)
+
+        else:
+            # For each key values pair in right_index
+            right_items = [(k, vs) for k, vs in right_index.items()]
+            for k, vs in right_items:
+                # Transform key if column was given math requirements ie S.a + 5
                 k = right_column.transform(k)
 
-                # Get the rows that satisfy for each table's column
+                # Get the row pairs that satisfy for each table's column
                 left_rows = left_index.op(k, comparison.operator, negated)
                 if left_tup_idx <= right_tup_idx:
-                    # return a map from the lesser table index values to the greater
-                    for v in left_rows:
-                        values[v] = set(vs)
+                    for lr in left_rows:
+                        for v in vs:
+                            yield (lr, v)
                 else:
                     for v in vs:
-                        values[v] = set(left_rows)
-            return left_tup_idx, right_tup_idx, values
+                        for lr in left_rows:
+                            yield (v, lr)
 
-    # @timeit("Evaluating Conditions")
     def eval_conditions(self, conditions):
         """
         Produces a map from table index to list of locations and
@@ -140,7 +162,8 @@ class QueryFacade:
         # Iterate over each OR group in the conditions
         for group in conditions[1]:
             not_intersection = group[0]  # Flag to negate the results of the this AND group
-            eval_result = None
+            result_generator = ResultGenerator(len(self._tables), self.get_mem_locs(),
+                                               [table.filename for table in self._tables])
 
             # Iterate through each ANDed condition
             for condition in group[1]:
@@ -154,70 +177,53 @@ class QueryFacade:
                     evaluation = self.eval_conditions(condition)
 
                 # Consolidate the evaluation results
-                eval_result = self._intersect_evaluation(eval_result, evaluation)
+                self._intersect_evaluation(result_generator, evaluation)
 
             # Negate the result
             if not_intersection:
-                eval_result = self._negate(eval_result)
+                result_generator.negate()
 
             # Collect the evaluation results of the OR groups
             if union_result is None:
-                union_result = eval_result
+                union_result = result_generator
             else:
-                union_result = self._union_evaluation(union_result, eval_result)
+                union_result |= result_generator
 
         # Negate the result
         if not_union:
-            union_result = self._negate(union_result)
+            union_result.negate()
 
         return union_result
 
-    # @timeit("Intersecting Evaluation")
-    def _intersect_evaluation(self, eval_result, evaluation):
+    def _intersect_evaluation(self, result_generator, evaluation):
         """
         Can intersect the result from eval_comparison with the results from eval_conditions2
         :param eval_result: the accumulation thus far
         :param evaluation: the new values to consider
         :return: the new intersection
         """
-        if eval_result is None:
-            eval_result = EvaluationResult(len(self._tables))
-
-        if isinstance(evaluation, EvaluationResult):
+        if isinstance(evaluation, ResultGenerator):
             # Handle the result of a nested condition statement
-            return eval_result.intersect(evaluation)
+            result_generator &= evaluation
         elif len(evaluation) == 2:
             # Handle the result of a column to constant comparison
-            table_index, table_locations = evaluation
-            eval_result.intersect_row_list(table_index, table_locations)
-            return eval_result
+            table_index, single_generator = evaluation
+            result_generator.reduce_single_constraints(table_index, single_generator)
         elif len(evaluation) == 3:
             # Handle the result of a column to column comparison
-            left_index, right_index, row_map = evaluation
-
-            if left_index + 1 == right_index:
-                eval_result.intersect_consecutive_table_rows(left_index, row_map)
+            left_index, right_index, double_generator = evaluation
+            if left_index == right_index:
+                values = [i for i, j in double_generator if i == j]
+                result_generator.reduce_single_constraints(left_index, values)
             else:
-                eval_result.intersect_nonconsecutive_table_rows(left_index, right_index, row_map)
+                result_generator.reduce_double_constraints((left_index, right_index), double_generator)
 
-            return eval_result
-
-    # @timeit("Unionizing Evaluation")
-    def _union_evaluation(self, union_result, eval_result):
-        """
-        Can union the result from eval_comparison with the results from eval_conditions2
-        :param union: the accumulation thus far in a list of list of tuples
-        :return: the new union
-        """
-        return union_result.union(eval_result)
-
-    # @timeit("Negating Results")
-    def _negate(self, result):
+    def _negate(self, result_generator):
         """
         Returns the complement of the results, using the mem_locs store by each TableIndexer
         :param results: results from prior evaluations in eval_conditions2 in list of tuple list or EvaluationResult form
         :return: the negation of results
         """
-        table_mem_locs = [self._table_indices[repr(tbl)].mem_locs for tbl in self._tables]
-        result.negate(table_mem_locs)
-        return result
+
+    def get_mem_locs(self):
+        return [self._table_indices[repr(tbl)].mem_locs for tbl in self._tables]

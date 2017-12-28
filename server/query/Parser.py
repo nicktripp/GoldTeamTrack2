@@ -57,6 +57,35 @@ class Parser:
             i += 1
         return i
 
+    def validate_identifier_list(self, stmt, idx):
+        token_stmt = stmt.tokens[idx]
+        token_list = token_stmt.tokens
+
+        i = 0
+        while i < len(token_list):
+            if not self.validate_identifier(token_stmt, i):
+                return False
+            i += 1
+            i = self.consume_whitespace(token_stmt, i)
+            if i < len(token_list) and \
+                    token_list[i].ttype != sqlparse.tokens.Punctuation and \
+                    token_list[i].ttype != sqlparse.tokens.Operator and\
+                    not self.validate_identifier(token_stmt, i):
+                return False
+            i += 1
+            i = self.consume_whitespace(token_stmt, i)
+
+        return True
+
+    def validate_literal(self, stmt, idx):
+        token = stmt.tokens[idx]
+        valid = False
+        valid = valid or token.ttype == sqlparse.tokens.Literal
+        valid = valid or token.ttype == sqlparse.tokens.Literal.Number.Integer
+        valid = valid or token.ttype == sqlparse.tokens.Literal.Number.Float
+        valid = valid or token.ttype == sqlparse.tokens.Literal.String
+        valid = valid or token.ttype == sqlparse.tokens.Literal.String.Symbol
+        return valid
 
     def validate_identifier(self, stmt, idx):
         """
@@ -66,19 +95,15 @@ class Parser:
 
         @returns a boolean
         """
-        if(stmt.tokens[idx].is_group):
-            if len(stmt.tokens[idx].tokens) == 3:
-                return \
-                    type(stmt.tokens[idx]) == sqlparse.sql.Identifier
-
-            if len(stmt.tokens[idx].tokens) == 5:
-                return \
-                    type(stmt.tokens[idx].tokens[0]) == sqlparse.sql.Identifier
+        if stmt.tokens[idx].is_group:
+            return self.validate_identifier_list(stmt, idx)
 
         return \
             stmt.tokens[idx].match(sqlparse.tokens.Wildcard, '*') or \
             type(stmt.tokens[idx]) == sqlparse.sql.Identifier or \
-            type(stmt.tokens[idx]) == sqlparse.sql.IdentifierList
+            stmt.tokens[idx].ttype == sqlparse.tokens.Name or \
+            self.validate_literal(stmt, idx)
+
 
     def consume_select(self, stmt, idx):
         """
