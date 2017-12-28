@@ -24,17 +24,20 @@ class Client(cmd.Cmd):
         print(r.text)
 
     def do_query(self, query):
-        t1 = time.time()
+
         print(query)
+        t1 = time.time()
         r = requests.post("http://127.0.0.1:5000/query/", data={"query": query})
+        t2 = time.time()
 
         if r.headers['SQL-Error'] == 'False':
             records = r.text.split('\n')
 
+            print("\n%d Records Found:\n" % len(records))
             for record in records:
                 print(record)
 
-            print("\n\t|-" + str(time.time() - t1) + ' seconds elapsed')
+            print("\n\t|- %d records found in %f7.4 seconds" % (len(records), (t2 - t1)))
 
         elif r.headers['SQL-Error'] == 'True':
             print(r.text)

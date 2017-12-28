@@ -9,6 +9,7 @@ from os.path import isfile, join
 
 from server.Hangman import Hangman
 
+import time
 import sys
 
 from server.query.SQLParsingError import SQLParsingError
@@ -25,14 +26,16 @@ def query():
 
         # Send query to query parser
         try:
+            t0 = time.time()
             ret = Hangman.execute(sql_str)
+            t1 = time.time()
             ret_str = ""
             for i, line in enumerate(ret):
                 ret_str += line
                 if i != len(ret) - 1:
                     ret_str += "\n"
 
-            print("\n---\nPrinting records:\n"+ret_str, file=sys.stderr)
+            print("\n\t|- %d records found in %f7.4 seconds" % (len(ret), (t1 - t0)))
             resp = app.make_response((ret_str, {'SQL-Error': False}))
 
         except SQLParsingError as e:

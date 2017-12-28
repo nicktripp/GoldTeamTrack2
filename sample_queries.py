@@ -315,6 +315,7 @@ if __name__ == "__main__":
     # print("\n***\n")
 
     t0 = time.time()
+    # query = 'SELECT B.name, B.postal_code, R.review_id, R.stars, R.useful FROM business B JOIN review1m R ON (B.business_id = R.business_id) WHERE B.city = "Champaign" AND B.state = "IL" '
     query = 'SELECT B.name, B.postal_code, R.review_id, R.stars, R.useful FROM business B JOIN review1m R ON ' \
             '(B.business_id = R.business_id) WHERE B.city = "Champaign" AND B.state = "IL" '
     out = Hangman.execute(query, BTreeIndex)
@@ -347,6 +348,7 @@ if __name__ == "__main__":
     # print("\n***\n")
 
     t0 = time.time()
+    # query = 'SELECT DISTINCT B.name FROM business B JOIN review1m R JOIN photos P ON (B.business_id = R.business_id AND B.business_id = P.business_id) WHERE B.city = "Champaign" AND B.state = "IL" AND R.stars = 5 AND P.label = "inside" '
     query = 'SELECT DISTINCT B.name FROM business B JOIN review1m R JOIN photos P ON (B.business_id = R.business_id ' \
             'AND B.business_id = P.business_id) WHERE B.city = "Champaign" AND B.state = "IL" AND R.stars = 5 AND ' \
             'P.label = "inside" '
