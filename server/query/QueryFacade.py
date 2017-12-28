@@ -1,4 +1,5 @@
 import os
+# from multiprocessing.pool import Pool
 
 from server.indexing.TableIndexer import TableIndexer
 from server.query.Comparison import Comparison
@@ -16,6 +17,8 @@ class QueryFacade:
         Data sources are supplied by the QueryOptimizer
         :param tables:
         """
+        # self._pool = Pool(4)
+
         self._tables = tables
         self._proj_columns = projection_columns
         self._table_indices = {}
@@ -23,6 +26,9 @@ class QueryFacade:
         for tbl in self._tables:
             tbl_cols = [col for col in condition_columns if col.table == tbl]
             self._table_indices[repr(tbl)] = TableIndexer(tbl, tbl_cols, index_class=index_type)
+
+    # def close_pool(self):
+    #     self._pool.close()
 
     @staticmethod
     def is_query_indexed(tables):
@@ -63,7 +69,7 @@ class QueryFacade:
             tbl_rows = []
             for tbl in tbls:
                 tbl_rows.append(self._table_indices[repr(tbl)].mem_locs)
-            result = ResultGenerator(len(tbls), self.get_mem_locs())
+            result = ResultGenerator(len(tbls), self.get_mem_locs(), [table.filename for table in self._tables])
             return result.generate_tuples()
         else:
             # Handle queries with conditions
@@ -104,26 +110,38 @@ class QueryFacade:
             left_tup_idx = self._tables.index(comparison.left_column(self._tables).table)
             right_tup_idx = self._tables.index(comparison.right_column(self._tables).table)
             double_generator = self.columns_comparison(left_index, left_tup_idx, right_index, right_tup_idx,
-                                                       right_column, comparison, negated)
+                                                       left_column, right_column, comparison, negated)
             return left_tup_idx, right_tup_idx, double_generator
 
-    @staticmethod
-    def columns_comparison(left_index, left_tup_idx, right_index, right_tup_idx, right_column, comparison,
+    def columns_comparison(self, left_index, left_tup_idx, right_index, right_tup_idx, left_column, right_column,
+                           comparison,
                            negated):
-        for k, vs in right_index.items():
-            # Transform key if column was given math requirements S.a + 5
-            k = right_column.transform(k)
+        # Loop over the values of the index with fewer items
+        if right_index.size() > left_index.size():
+            left_index, right_index = right_index, left_index
+            left_tup_idx, right_tup_idx = right_tup_idx, left_tup_idx
+            left_column, right_column = right_column, left_column
 
-            # Get the row pairs that satisfy for each table's column
-            left_rows = left_index.op(k, comparison.operator, negated)
-            if left_tup_idx <= right_tup_idx:
-                for lr in left_rows:
-                    for v in vs:
-                        yield (lr, v)
-            else:
-                for v in vs:
+        if comparison.operator == '=':
+            yield from left_index.index_equals_index_op(right_index)
+
+        else:
+            # For each key values pair in right_index
+            right_items = [(k, vs) for k, vs in right_index.items()]
+            for k, vs in right_items:
+                # Transform key if column was given math requirements ie S.a + 5
+                k = right_column.transform(k)
+
+                # Get the row pairs that satisfy for each table's column
+                left_rows = left_index.op(k, comparison.operator, negated)
+                if left_tup_idx <= right_tup_idx:
                     for lr in left_rows:
-                        yield (v, lr)
+                        for v in vs:
+                            yield (lr, v)
+                else:
+                    for v in vs:
+                        for lr in left_rows:
+                            yield (v, lr)
 
     def eval_conditions(self, conditions):
         """
@@ -144,7 +162,8 @@ class QueryFacade:
         # Iterate over each OR group in the conditions
         for group in conditions[1]:
             not_intersection = group[0]  # Flag to negate the results of the this AND group
-            result_generator = ResultGenerator(len(self._tables), self.get_mem_locs())
+            result_generator = ResultGenerator(len(self._tables), self.get_mem_locs(),
+                                               [table.filename for table in self._tables])
 
             # Iterate through each ANDed condition
             for condition in group[1]:

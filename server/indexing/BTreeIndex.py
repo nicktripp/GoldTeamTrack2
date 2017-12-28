@@ -65,6 +65,9 @@ class BTreeIndex:
     def items(self):
         return self.btree.items()
 
+    def size(self):
+        return self.btree.n
+
     def op(self, key, comparison, negated=False):
         """
         The key will be compared against all of the keys in the index with the provided comparison
@@ -88,6 +91,65 @@ class BTreeIndex:
             yield from self.greaterThanOrEqual(key)
         elif comparison == 'LIKE':
             yield from self.like(key, negated)
+
+    def index_equals_index_op(self, other):
+        # Consider all matching keys in each index
+        val1, block1 = self.btree.get_with_block(self.btree.smallest)
+        val2, block2 = other.btree.get_with_block(other.btree.smallest)
+        i1, i2 = 1, 1
+
+        # Iterate through the keys of the smaller index, skipping through the keys of the larger
+        smaller_index, larger_index = other, self
+        k1 = larger_index.btree.smallest
+        k2 = smaller_index.btree.smallest
+        while block1 is not None and block2 is not None:
+            if k1 < k2:
+                # If the larger index has a smaller key, move the key forward until they match
+                while block1 is not None and k1 < k2:
+                    if i1 < len(block1.keys):
+                        # Get the next key in the block
+                        k1 = block1.keys[i1]
+                        i1 += 1
+                    else:
+                        # Get the next block
+                        block1 = block1.next_leaf
+                        i1 = 0
+            elif k1 > k2:
+                # If the smaller index has a smaller key, move the key forward until they match
+                while block2 is not None and k2 < k1:
+                    if i2 < len(block2.keys):
+                        # Get the next key in the block
+                        k2 = block2.keys[i2]
+                        i2 += 1
+                    else:
+                        # Get the next block
+                        block2 = block2.next_leaf
+                        i2 = 0
+
+            # If the keys are equal, yield the cartesian product of their values
+            if k1 == k2:
+                for v1 in block1.values[0]:
+                    for v2 in block2.values[0]:
+                        yield (v1, v2)
+
+            # Stop if there are no more keys to consider
+            if block2 is None:
+                break
+
+            # Move the smaller index to the next key
+            if i2 < len(block2.keys):
+                # Get the next key in the block
+                k2 = block2.keys[i2]
+                i2 += 1
+            else:
+                # Get the next block
+                block2 = block2.next_leaf
+
+                # Get the next key
+                if block2 is None:
+                    break
+                k2 = block2.keys[0]
+                i2 = 1
 
     def equal(self, key):
         values = self.btree[key]
