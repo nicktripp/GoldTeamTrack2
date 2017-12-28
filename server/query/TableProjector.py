@@ -59,14 +59,22 @@ class TableProjector:
         for table_index in rows:
             table_file = table_files[table_index]
             desired_columns = self._columns_to_read_by_table[repr(self._tables[table_index])]
+            column_projection_indices = {p: c for c, p in self._proj_col_idx_by_table_idx[table_index]}
             for location in sorted(list(rows[table_index])):
                 # Read the row at location in table_file
                 column_values = self.read_col_vals_multiline(location, table_file)
 
                 # Select the desired columns from the row and store them according to the location as an ordered tuple
-                projected_column_values = tuple(
-                    column_values[i] for i in range(len(column_values)) if i in desired_columns)
-                table_projections[table_index][location] = projected_column_values
+                projected_column_values = [column_values[i] for i in range(len(column_values)) if i in desired_columns]
+                for c in self._math_cols:
+                    # Transform the projected column if they have any arithmetic in the output
+                    float_col_val = float(projected_column_values[column_projection_indices[c]])
+                    projected_column_values[c] = str(self._projection_columns[c].transform(float_col_val))
+                table_projections[table_index][location] = tuple(projected_column_values)
+
+        # Close the files we were reading from
+        for f in table_files:
+            f.close()
 
         # Organize the outputs
         output = []
@@ -77,8 +85,6 @@ class TableProjector:
                 cols = table_projections[i][v]
                 for c, p in col_proj:
                     output[-1][p] = cols[c]
-            for c in self._math_cols:
-                output[-1][c] = str(self._projection_columns[c].transform(float(output[-1][c])))
             output[-1] = ','.join(output[-1])
 
         # Ensure DISTINCT output

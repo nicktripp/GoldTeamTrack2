@@ -9,6 +9,7 @@ class ResultGenerator:
 
         # used in tuple generation
         self._right_pairs = defaultdict(list)
+        self._left_pairs = defaultdict(list)
         self._left_values = {}
         self._ors = []
 
@@ -81,60 +82,125 @@ class ResultGenerator:
     def generate_tuples(self):
         # reset these fields
         self._right_pairs = defaultdict(list)
+        self._left_pairs = defaultdict(list)
         self._left_values = {}
 
-        # capture constraints as lists
-        for single in self._single_constraints:
-            self._single_constraints[single] = list(self._single_constraints[single])
+        # capture constraints as sets
+        self._prepare_constraints()
 
-        for double in self._double_constraints:
-            self._double_constraints[double] = list(self._double_constraints[double])
+        # lookup all the dependencies that have the same left column or right column
+        self._find_left_and_right_pairs()
 
-            # lookup the dependencies of each tuple
-        for table_index in range(self._tuple_length):
-            for table_pair in self._double_constraints:
-                if table_pair[0] == table_index:
-                    if table_index not in self._left_values:
-                        self._left_values[table_index] = {_[0] for _ in self._double_constraints[table_pair]}
-                    else:
-                        self._left_values[table_index] &= {_[0] for _ in self._double_constraints[table_pair]}
-                elif table_pair[1] == table_index:
-                    self._right_pairs[table_index].append(table_pair)
+        # Remove all possible tuples for the same right table index that do not support the same row location
+        self._prepare_supported_constraints()
 
-        yield from self._generate_recurse(0, [])
+        # Make a map for all of the left values to the right values they match
+        self._prepare_pairs()
+
+        # Iterate through all possible indices of each table, stopping when the first table has visited all indices
+        # self._default_table_values = [self._table_value_generator(i) for i in range(self._tuple_length)]
+        self._table_values = [self._table_value_generator(i) for i in range(self._tuple_length)]
+        tup = [-1] * self._tuple_length
+        yield from self._generate_helper(0, tup)
 
         for ored in self._ors:
             yield from ored.generate_tuples()
 
-    def _generate_recurse(self, table_index, accumulation):
-        if table_index == self._tuple_length:
-            # Base Case
-            yield tuple(accumulation)
+    def _prepare_pairs(self):
+        self._pairs = {}
+        for table_index in range(self._tuple_length):
+            if table_index in self._left_pairs:
+                # Get the valid values according to single column constraints for table_index
+                left_singles = self._single_constraints[
+                    table_index] if table_index in self._single_constraints else None
+                if left_singles is None:
+                    left_singles = set(self._mem_locs[table_index])
+
+                # Lookup all of the left values that are supported by single column and double column constraints
+                # Map the left value in one column to a set of right values for another column that are valid
+                self._pairs[table_index] = defaultdict(lambda: defaultdict(set))
+                for table_pair in self._left_pairs[table_index]:
+                    for tup in self._double_constraints[table_pair]:
+                        if tup[0] in left_singles:
+                            self._pairs[table_index][tup[0]][table_pair[1]].add(tup[1])
+
+    def _reduce_double_constraints(self):
+        # Remove tuples that are not supported by single column constraints
+        for table_index in self._right_pairs:
+            for table_pair in self._right_pairs[table_index]:
+                s0, s1 = self._single_constraints[table_pair[0]], self._single_constraints[table_pair[1]]
+                d = self._double_constraints[table_pair]
+                self._double_constraints[table_pair] = [_ for _ in d if _[0] in s0 and _[1] in s1]
+
+    def _prepare_supported_constraints(self):
+        # Remove double constraints tuples that don't have support from single column constraints
+        self._reduce_double_constraints()
+
+        for table_index in self._right_pairs:
+            # Find all of the locations that are supported by all table_pairs
+            supported = None
+            for table_pair in self._right_pairs[table_index]:
+                if supported is None:
+                    supported = {_[1] for _ in self._double_constraints[table_pair]}
+                else:
+                    supported &= {_[1] for _ in self._double_constraints[table_pair]}
+
+            # Remove all tuples that are not supported by all table_pairs
+            for table_pair in self._right_pairs[table_index]:
+                self._double_constraints[table_pair] = [_ for _ in self._double_constraints[table_pair] if
+                                                        _[1] in supported]
+
+    def _find_left_and_right_pairs(self):
+        for table_index in range(self._tuple_length):
+            for table_pair in self._double_constraints:
+                if table_pair[0] == table_index:
+                    self._left_pairs[table_index].append(table_pair)
+                elif table_pair[1] == table_index:
+                    self._right_pairs[table_index].append(table_pair)
+
+    def _prepare_constraints(self):
+        for single in self._single_constraints:
+            self._single_constraints[single] = list(self._single_constraints[single])
+        # set unset tables to all mem location
+        for table_index in range(self._tuple_length):
+            if table_index not in self._single_constraints or self._single_constraints[table_index] is None:
+                self._single_constraints[table_index] = self._mem_locs[table_index]
+        for double in self._double_constraints:
+            self._double_constraints[double] = set(self._double_constraints[double])
+
+    def _generate_helper(self, column_index, tup):
+        if column_index == self._tuple_length:
+            yield tuple(tup)
             return
 
-        # Find the possible values for this table considering the single constraints
+        for column_value in self._table_values[column_index]:
+            if column_index in self._left_pairs:
+                # Update the valid table values for following columns
+                before = {}
+                for table_pair in self._left_pairs[column_index]:
+                    before[table_pair[1]] = self._table_values[table_pair[1]]
+                    self._table_values[table_pair[1]] = self._pairs[column_index][column_value][table_pair[1]]
+
+                # Yield to recursion with different table_values
+                tup[column_index] = column_value
+                yield from self._generate_helper(column_index + 1, tup)
+
+                # Put the table values back to the way they were
+                for table_index in before:
+                    self._table_values[table_index] = before[table_index]
+            else:
+                tup[column_index] = column_value
+                yield from self._generate_helper(column_index + 1, tup)
+
+    def _table_value_generator(self, table_index):
+        # Get the possible values according to single column constraints
+        if table_index in self._pairs:
+            return set(self._pairs[table_index].keys())
+
         if table_index not in self._single_constraints or self._single_constraints[table_index] is None:
-            values = set(self._mem_locs[table_index])
+            return set(self._mem_locs[table_index])
         else:
-            values = set(self._single_constraints[table_index])
-
-        # filter values depending on previous accumulation values
-        if table_index in self._right_pairs:
-            for table_pair in self._right_pairs[table_index]:
-                # Only pairs with accumulation[table_pair[0]] first and an item from
-                # [_[1] for _ in self._double_constraints[table_pair]]) second are valid pairs
-                values &= {_[1] for _ in self._double_constraints[table_pair] if _[0] == accumulation[table_pair[0]]}
-
-        # filter values depending on following accumulation values
-        if table_index in self._left_values:
-            values &= set(self._left_values[table_index])
-
-        # Add another place to the accumulation and yield over each potential value
-        if len(accumulation) < table_index + 1:
-            accumulation.append(-1)
-        for value in values:
-            accumulation[table_index] = value
-            yield from self._generate_recurse(table_index + 1, accumulation)
+            return set(self._single_constraints[table_index])
 
     def _iand_helper(self, other, self_single_constraints, self_double_constraints):
         for single in self_single_constraints:
