@@ -3,38 +3,38 @@ from server.indexing.BTreeIndex import BTreeIndex
 from server.indexing.BTreeIndex import BTreeIndex
 
 if __name__ == "__main__":
+    query = "SELECT S.a FROM small S"
+    out = Hangman.execute(query, BTreeIndex)
+    assert set(out) == {'1', '5', '9'}
 
     query = "SELECT S.a FROM small S"
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ['1', '5', '9']
-
-    query = "SELECT S.a FROM small S"
-    out = Hangman.execute(query, BTreeIndex)
-    assert out == ['1', '5', '9']
+    assert set(out) == {'1', '5', '9'}
 
     query = "SELECT S.b * 3 FROM small S WHERE S.c / 2 < 4"
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ['6.0', '18.0']
+    print(out)
+    assert set(out) == {'6.0', '18.0'}
 
     query = "SELECT S.b / 2 FROM small S WHERE S.c / 2 < 4"
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ['1.0', '3.0']
+    assert set(out) == {'1.0', '3.0'}
 
     query = "SELECT S.b + 3 FROM small S WHERE S.c / 2 < 4"
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ['5.0', '9.0']
+    assert set(out) == {'5.0', '9.0'}
 
     query = "SELECT S.b - 3 FROM small S WHERE S.c / 2 < 4"
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ['-1.0', '3.0']
+    assert set(out) == {'-1.0', '3.0'}
 
     query = "SELECT S.* FROM small S"
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ['1,2,3,4', '5,6,7,8', '9,10,11,12']
+    assert set(out) == {'1,2,3,4', '5,6,7,8', '9,10,11,12'}
 
     query = "SELECT * FROM small S"
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ['1,2,3,4', '5,6,7,8', '9,10,11,12']
+    assert set(out) == {'1,2,3,4', '5,6,7,8', '9,10,11,12'}
 
     query = "SELECT * FROM small S WHERE S.a > 1"
     out = Hangman.execute(query, BTreeIndex)
@@ -46,36 +46,36 @@ if __name__ == "__main__":
 
     query = "SELECT * FROM small S WHERE NOT (S.a > 1)"
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ['1,2,3,4']
+    assert set(out) == {'1,2,3,4'}
 
     query = "SELECT * FROM small S WHERE NOT S.a > 1"
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ['1,2,3,4']
+    assert set(out) == {'1,2,3,4'}
 
     query = "SELECT * FROM small S WHERE NOT (S.a = 1 OR S.a = 5)"
     out = Hangman.execute(query, BTreeIndex)
     print(out)
-    assert out == ['9,10,11,12']
+    assert set(out) == {'9,10,11,12'}
 
     query = "SELECT * FROM small S WHERE S.b > 2 AND (NOT (S.a = 5))"
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ['9,10,11,12']
+    assert set(out) == {'9,10,11,12'}
 
     query = 'SELECT * FROM small_text S WHERE NOT S.a LIKE "%ac%"'
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ["abc,abd,abe,abf,abg"]
+    assert set(out) == {"abc,abd,abe,abf,abg"}
 
     query = 'SELECT * FROM small_text S WHERE NOT (S.a LIKE "%ac%")'
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ["abc,abd,abe,abf,abg"]
+    assert set(out) == {"abc,abd,abe,abf,abg"}
 
     query = "SELECT * FROM small S WHERE S.a > 1 AND S.b <> 10"
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ['5,6,7,8']
+    assert set(out) == {'5,6,7,8'}
 
     query = 'SELECT * FROM small_text S WHERE S.a LIKE "ab%"'
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ["abc,abd,abe,abf,abg"]
+    assert set(out) == {"abc,abd,abe,abf,abg"}
 
     query = 'SELECT * FROM small_text S WHERE S.a LIKE "%ac%"'
     out = Hangman.execute(query, BTreeIndex)
@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     query = 'SELECT * FROM small_text S WHERE S.a LIKE "%a%" AND S.b = "abd"'
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ["abc,abd,abe,abf,abg"]
+    assert set(out) == {"abc,abd,abe,abf,abg"}
 
     query = "SELECT S1.* FROM small S1, small S2 WHERE S1.a > 1 AND S2.a < 9"
     out = Hangman.execute(query, BTreeIndex)
@@ -104,16 +104,15 @@ if __name__ == "__main__":
 
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a = 1"
     out = Hangman.execute(query, BTreeIndex)
-    print(out)
-    assert out == ['1,2,3,4,1,2,3,4',
-                    '1,2,3,4,5,6,7,8',
-                    '1,2,3,4,9,10,11,12']
+    assert set(out) == {'1,2,3,4,1,2,3,4',
+                        '1,2,3,4,5,6,7,8',
+                        '1,2,3,4,9,10,11,12'}
 
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a = 1 OR S1.a = 2"
     out = Hangman.execute(query, BTreeIndex)
-    assert out == ['1,2,3,4,1,2,3,4',
-                    '1,2,3,4,5,6,7,8',
-                    '1,2,3,4,9,10,11,12']
+    assert set(out) == {'1,2,3,4,1,2,3,4',
+                        '1,2,3,4,5,6,7,8',
+                        '1,2,3,4,9,10,11,12'}
 
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a = 1 OR S1.a = 5"
     out = Hangman.execute(query, BTreeIndex)
@@ -151,7 +150,7 @@ if __name__ == "__main__":
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE (S2.b = 2 AND (S1.a < 9 AND S1.a > 1))"
     out = Hangman.execute(query, BTreeIndex)
     print(out)
-    assert out == ['5,6,7,8,1,2,3,4']
+    assert set(out) == {'5,6,7,8,1,2,3,4'}
 
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE (S2.b = 2 AND (S1.a < 9 AND S1.a > 1 OR S1.a <> 5))"
     out = Hangman.execute(query, BTreeIndex)
@@ -191,6 +190,7 @@ if __name__ == "__main__":
 
     query = "SELECT S.*, M.* FROM small S, medium M WHERE S.a = M.a AND M.a <> 1"
     out = Hangman.execute(query, BTreeIndex)
+    print(out)
     assert set(out) == set()
 
     query = "SELECT S.*, M.* FROM small S JOIN medium M"
