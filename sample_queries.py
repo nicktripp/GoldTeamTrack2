@@ -3,12 +3,38 @@ import time
 from server.indexing.BTreeIndex import BTreeIndex
 from server.indexing.BitmapIndex import BitmapIndex
 
+def print_table(table):
+    for row in table:
+        rowstr = ""
+        for col in row:
+            rowstr += "|\t"+col+"\t|"
+        print(rowstr)
+        rowstr = ""
+        for i in range(len(row)):
+            rowstr += "\t-\t\t"
+        print(rowstr)
+
+def test_print_table():
+    table = [["", "50k row", "1m row"],["Q1", "0.3453", "1.0405"], ["Q2", "0.8939", "8.3859"], ["Q3", "2.8495", "40.9859"]]
+    print_table(table)
+
 if __name__ == "__main__":
+
+    print("\n***\n")
+
+
+    res_table = [["","50k rows","1m  rows"]]
+    res_table.append(["Q1"])
+    res_table.append(["Q2"])
+    res_table.append(["Q3"])
+
     t0 = time.time()
     query = 'SELECT R.review_id, R.stars, R.useful FROM review50k R WHERE R.stars >= 4 AND R.useful > 20'
     out = Hangman.execute(query, BTreeIndex)
     t1 = time.time()
-    print("Time Elapsed %f s over 50k" % (t1 - t0))
+    elapsed = t1 - t0
+    res_table[1].append("%.5f" % elapsed)
+    print("Time Elapsed %f s over 50k" % (elapsed))
     q_out = {"Oxz26pqpIb7dDVeuUzNZlg,4,66", "XBAOIjGY9KYBxqU5VzzlpQ,4,27", "rlh_Sk5croW4D1Mqu9CzRg,4,50",
              "LCY-SUSHqf2Nt0phPGpKfQ,5,44", "P_RyU43VMJ6S55KwQkEUWQ,4,22", "C5v2RIDy2CsQURHLyZ5RBg,5,26",
              "GjoYucYyg3iI14531KSBaw,5,26", "_QoLIsOEgZGrcT51CQ4WRw,5,46", "_ia_lz3xuBUPC_vfis8Lvg,4,53",
@@ -44,12 +70,17 @@ if __name__ == "__main__":
 
     assert len(q_out) == len(out)
 
+    print("\n***\n")
+
     t0 = time.time()
     query = 'SELECT R.review_id, R.stars, R.useful FROM review1m R WHERE R.stars >= 4 AND R.useful > 20'
     out = Hangman.execute(query, BTreeIndex)
     t1 = time.time()
     print("Time Elapsed %f s over 1m" % (t1 - t0))
+    elapsed = t1 - t0
+    res_table[1].append("%.5f" % elapsed)
 
+    print("\n***\n")
 
     t0 = time.time()
     query = 'SELECT B.name, B.postal_code, R.review_id, R.stars, R.useful FROM business B JOIN review50k R ON (' \
@@ -276,7 +307,12 @@ if __name__ == "__main__":
         if a not in out:
             print(a)
 
+    elapsed = t1 - t0
+    res_table[2].append("%.5f" % elapsed)
+
     assert len(q_out) == len(out)
+
+    print("\n***\n")
 
     t0 = time.time()
     query = 'SELECT B.name, B.postal_code, R.review_id, R.stars, R.useful FROM business B JOIN review1m R ON ' \
@@ -284,7 +320,10 @@ if __name__ == "__main__":
     out = Hangman.execute(query, BTreeIndex)
     t1 = time.time()
     print("Time Elapsed %f s over 1m" % (t1 - t0))
+    elapsed = t1 - t0
+    res_table[2].append("%.5f" % elapsed)
 
+    print("\n***\n")
 
     t0 = time.time()
     query = 'SELECT DISTINCT B.name FROM business B JOIN review50k R JOIN photos P ON (B.business_id = R.business_id ' \
@@ -300,8 +339,12 @@ if __name__ == "__main__":
     for a in q_out:
         if a not in out:
             print(a)
+    elapsed = t1 - t0
+    res_table[3].append("%.5f" % elapsed)
 
     assert len(q_out) == len(out)
+
+    print("\n***\n")
 
     t0 = time.time()
     query = 'SELECT DISTINCT B.name FROM business B JOIN review1m R JOIN photos P ON (B.business_id = R.business_id ' \
@@ -310,3 +353,8 @@ if __name__ == "__main__":
     out = Hangman.execute(query, BTreeIndex)
     t1 = time.time()
     print("Time Elapsed %f s over 1m" % (t1 - t0))
+    elapsed = t1 - t0
+    res_table[3].append("%.5f" % elapsed)
+
+    print("\n***\n***\n")
+    print_table(res_table)
