@@ -1,11 +1,16 @@
 from collections import defaultdict
 
+import pickle
+
+import os
+
 
 class ResultGenerator:
 
-    def __init__(self, tuple_length, table_mem_locs):
+    def __init__(self, tuple_length, table_mem_locs, table_filenames):
         self._tuple_length = tuple_length
         self._mem_locs = table_mem_locs
+        self._table_names = table_filenames
 
         # used in tuple generation
         self._right_pairs = defaultdict(list)
@@ -110,27 +115,55 @@ class ResultGenerator:
         self._pairs = {}
         for table_index in range(self._tuple_length):
             if table_index in self._left_pairs:
-                # Get the valid values according to single column constraints for table_index
-                left_singles = self._single_constraints[
-                    table_index] if table_index in self._single_constraints else None
-                if left_singles is None:
-                    left_singles = set(self._mem_locs[table_index])
-
                 # Lookup all of the left values that are supported by single column and double column constraints
                 # Map the left value in one column to a set of right values for another column that are valid
                 self._pairs[table_index] = defaultdict(lambda: defaultdict(set))
                 for table_pair in self._left_pairs[table_index]:
-                    for tup in self._double_constraints[table_pair]:
-                        if tup[0] in left_singles:
-                            self._pairs[table_index][tup[0]][table_pair[1]].add(tup[1])
+                    for a, b in self._double_constraints[table_pair]:
+                        self._pairs[table_index][a][table_pair[1]].add(b)
+
+    def _get_mem_loc_maps(self):
+        """
+        Make a map from memory location to record number and save it to a pickle
+        file so that we don't have to do it again
+        :return:
+        """
+        mem_loc_maps = []
+        for table_name, mem_locs in zip(self._table_names, self._mem_locs):
+            pickle_file = table_name + '_mem_loc_map.pickle'
+            if not os.path.exists(pickle_file):
+                with open(pickle_file, 'wb') as f:
+                    mem_loc_map = {ml: i for i, ml in enumerate(mem_locs)}
+                    pickle.dump(mem_loc_map, f, pickle.HIGHEST_PROTOCOL)
+
+            with open(pickle_file, 'rb') as f:
+                mem_loc_maps.append(pickle.load(f))
+        return mem_loc_maps
 
     def _reduce_double_constraints(self):
+        # Load or generate memory location maps
+        mem_loc_maps = self._get_mem_loc_maps()
+
         # Remove tuples that are not supported by single column constraints
+        masks = {}
         for table_index in self._right_pairs:
             for table_pair in self._right_pairs[table_index]:
-                s0, s1 = self._single_constraints[table_pair[0]], self._single_constraints[table_pair[1]]
+                first, second = table_pair[0], table_pair[1]
+                ml0, ml1 = mem_loc_maps[first], mem_loc_maps[second]
+                m0, m1 = self._get_single_mask(masks, first, ml0), self._get_single_mask(masks, second, ml1)
                 d = self._double_constraints[table_pair]
-                self._double_constraints[table_pair] = [_ for _ in d if _[0] in s0 and _[1] in s1]
+                self._double_constraints[table_pair] = [_ for _ in d if m0[ml0[_[0]]] and m1[ml1[_[1]]]]
+
+    def _get_single_mask(self, masks, table_index, mem_lec_map):
+        if table_index not in masks:
+            single_constraints = self._single_constraints[table_index]
+            single_mask = [False] * len(self._mem_locs[table_index])
+            for mem_loc in single_constraints:
+                single_mask[mem_lec_map[mem_loc]] = True
+            masks[table_index] = single_mask
+        else:
+            single_mask = masks[table_index]
+        return single_mask
 
     def _prepare_supported_constraints(self):
         # Remove double constraints tuples that don't have support from single column constraints
@@ -141,9 +174,9 @@ class ResultGenerator:
             supported = None
             for table_pair in self._right_pairs[table_index]:
                 if supported is None:
-                    supported = {_[1] for _ in self._double_constraints[table_pair]}
+                    supported = {b for _, b in self._double_constraints[table_pair]}
                 else:
-                    supported &= {_[1] for _ in self._double_constraints[table_pair]}
+                    supported &= {b for _, b in self._double_constraints[table_pair]}
 
             # Remove all tuples that are not supported by all table_pairs
             for table_pair in self._right_pairs[table_index]:
@@ -217,7 +250,7 @@ class ResultGenerator:
         :param other:
         :return:
         """
-        rg = ResultGenerator(self._tuple_length, self._mem_locs)
+        rg = ResultGenerator(self._tuple_length, self._mem_locs, self._table_names)
 
         for single in self._single_constraints:
             rg._single_constraints[single] = self._sim_mod_constraints(other._single_constraints,
