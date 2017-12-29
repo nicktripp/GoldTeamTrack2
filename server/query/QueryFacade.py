@@ -12,7 +12,7 @@ class QueryFacade:
     We will hide the table querying interface behind this class
     """
 
-    def __init__(self, tables, condition_columns, projection_columns, indexType):
+    def __init__(self, tables, condition_columns, projection_columns, index_type):
         """
         Data sources are supplied by the QueryOptimizer
         :param tables:
@@ -25,7 +25,7 @@ class QueryFacade:
 
         for tbl in self._tables:
             tbl_cols = [col for col in condition_columns if col.table == tbl]
-            self._table_indices[repr(tbl)] = TableIndexer(tbl, tbl_cols, index_class=indexType)
+            self._table_indices[repr(tbl)] = TableIndexer(tbl, tbl_cols, index_class=index_type)
 
     # def close_pool(self):
     #     self._pool.close()
