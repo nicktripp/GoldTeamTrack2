@@ -209,3 +209,7 @@ if __name__ == "__main__":
     query = "SELECT S.*, S1.b, M.* FROM small S JOIN medium M JOIN small S1 ON (S.a = M.a AND S.b = S1.b)"
     out = Hangman.execute(query, BTreeIndex)
     assert set(out) == {'1,2,3,4,2,1,2,3', '1,2,3,4,2,1,6,7', '1,2,3,4,2,1,4,5'}
+
+    query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a + 4 = S2.a - 4"
+    out = Hangman.execute(query, BTreeIndex)
+    assert set(out) == {'5,6,7,8,5,6,7,8'}
