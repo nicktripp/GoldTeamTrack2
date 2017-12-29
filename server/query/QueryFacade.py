@@ -122,26 +122,9 @@ class QueryFacade:
             left_tup_idx, right_tup_idx = right_tup_idx, left_tup_idx
             left_column, right_column = right_column, left_column
 
-        if comparison.operator == '=':
-            yield from left_index.index_equals_index_op(right_index)
-
-        else:
-            # For each key values pair in right_index
-            right_items = [(k, vs) for k, vs in right_index.items()]
-            for k, vs in right_items:
-                # Transform key if column was given math requirements ie S.a + 5
-                k = right_column.transform(k)
-
-                # Get the row pairs that satisfy for each table's column
-                left_rows = left_index.op(k, comparison.operator, negated)
-                if left_tup_idx <= right_tup_idx:
-                    for lr in left_rows:
-                        for v in vs:
-                            yield (lr, v)
-                else:
-                    for v in vs:
-                        for lr in left_rows:
-                            yield (v, lr)
+        left_transformer, right_transformer = left_column.transform, right_column.transform
+        yield from left_index.index_to_index_op(right_index, comparison.operator, negated,
+                                                left_transformer, right_transformer, left_tup_idx, right_tup_idx)
 
     def eval_conditions(self, conditions):
         """
