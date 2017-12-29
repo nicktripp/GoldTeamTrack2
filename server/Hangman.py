@@ -72,7 +72,6 @@ class Hangman:
     @timeit("4. Executing the Plan")
     def execute_plan(facade, optimizer):
         results = facade.execute_plan(optimizer.projection_columns, optimizer.tables, optimizer.execution_conditions)
-        # facade.close_pool()
         return results
 
     @staticmethod
