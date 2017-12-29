@@ -17,9 +17,7 @@ class Comparison:
         if sqlparse_comparison is None:
             return
 
-        #self._left = sqlparse_comparison.left.value
         self._left = sqlparse_comparison.left
-        #self._right = sqlparse_comparison.right.value
         self._right = sqlparse_comparison.right
 
         for token in sqlparse_comparison.tokens:
@@ -41,6 +39,22 @@ class Comparison:
     def right_string(self):
         return self._right.value
 
+    def parse_op(self, operation):
+        """
+        Parses operation.
+
+        NOTE: Assumes that the operation strictly follows format: <Column> <operation> <number>
+        TODO: fix the above to support out of order and multiple col ops
+
+        :param operation:
+        :return: tuple containing: (tuple of (tablename, colname), operation, number)
+        """
+        real_name = operation.tokens[0].value   # TODO What if the operation is out-of-order? i.e. 2 * S.a
+        l_op = operation.tokens[2]
+        number = operation.tokens[4]            # TODO What if the operation uses two columns? i.e. S.a + S.b (not supported easily)
+        names = real_name.split('.')
+        return names, l_op, number
+
     def left_column(self, tables):
         """
         The comparison has not parsed the left and right to be actual columns yet
@@ -52,10 +66,7 @@ class Comparison:
         """
 
         if type(self._left) == sqlparse.sql.Operation:
-            real_name = self._left.tokens[0].value
-            l_op = self._left.tokens[2]
-            number = self._left.tokens[4]
-            names = real_name.split('.')
+            names, l_op, number = self.parse_op(self._left)
         else:
             val = self._left if isinstance(self._left, str) else self._left.value
             names = val.split('.')
@@ -75,7 +86,7 @@ class Comparison:
 
     def right_column_or_constant(self, tables, force_column=False):
         """
-        The comparison has not pasred the left and right to be actual columns yet
+        The comparison has not parsed the left and right to be actual columns yet
 
         Use the tables to find the correct table and column combination. If no
         column combination is found then assume that the right is a constant
@@ -85,9 +96,15 @@ class Comparison:
         :return: Column for right hand side or unboxed constant
         """
 
+        if type(self._right) == sqlparse.sql.Operation:
+            names, l_op, number = self.parse_op(self._right)
+            table_name, column_name = names
+            for table in tables:
+                if table.name == table_name or table.nickname == table_name:
+                    if column_name in table.column_index:
+                        return Column(table, column_name, l_op, number)
+
         val = self._right if isinstance(self._right, str) else self._right.value
-        if '.' in val:
-            names = val.split('.')
         names = val.split('.')
         if len(names) == 2:
             table_name, column_name = names

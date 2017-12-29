@@ -210,6 +210,22 @@ if __name__ == "__main__":
     out = Hangman.execute(query, BTreeIndex)
     assert set(out) == {'1,2,3,4,2,1,2,3', '1,2,3,4,2,1,6,7', '1,2,3,4,2,1,4,5'}
 
+    query = "SELECT S2.*, S1.* FROM small S1, small S2 WHERE S1.a = S2.a - 8"
+    out = Hangman.execute(query, BTreeIndex)
+    assert set(out) == {'1,2,3,4,9,10,11,12'}, print(out)
+
+    query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a = S2.a - 4"
+    out = Hangman.execute(query, BTreeIndex)
+    assert set(out) == {'1,2,3,4,5,6,7,8', '5,6,7,8,9,10,11,12'}
+
     query = "SELECT S1.*, S2.* FROM small S1, small S2 WHERE S1.a + 4 = S2.a - 4"
     out = Hangman.execute(query, BTreeIndex)
-    assert set(out) == {'5,6,7,8,5,6,7,8'}
+    assert set(out) == {'1,2,3,4,9,10,11,12'}
+
+    query = "SELECT S1.a FROM small S1 WHERE S1.a + S1.a = S1.a * 2"
+    out = Hangman.execute(query, BTreeIndex)
+    assert set(out) == {'1', '5', '9'}
+
+    query = "SELECT S1.a FROM small S1 WHERE S1.a + S1.a = 2 * S1.a"
+    out = Hangman.execute(query, BTreeIndex)
+    assert set(out) == {'1', '5', '9'}
