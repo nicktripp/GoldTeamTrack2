@@ -125,8 +125,9 @@ class BTreeIndex:
 
             # If the keys are equal, yield the cartesian product of their values
             if k1 == k2:
-                for v1 in block1.values[0]:
-                    for v2 in block2.values[0]:
+                i, j = i1 - 1, i2 - 1
+                for v1 in block1.values[i]:
+                    for v2 in block2.values[j]:
                         yield (v1, v2)
 
             # Stop if there are no more keys to consider

@@ -71,7 +71,68 @@ class BitmapIndex:
 
         return index
 
+    def index_equals_index(self, other, left_transformer, right_transformer):
+        # Consider all matching keys in each index
+        val1, block1 = self.bitstringTree.get_with_block(self.btree.smallest)
+        val2, block2 = other.bitstringTree.get_with_block(other.btree.smallest)
+        i1, i2 = 1, 1
 
+        # Iterate through the keys of the smaller index, skipping through the keys of the larger
+        smaller_index, larger_index = other, self
+        k1 = left_transformer(larger_index.bitstringTree.smallest)
+        k2 = right_transformer(smaller_index.bitstringTree.smallest)
+        while block1 is not None and block2 is not None:
+            if k1 < k2:
+                # If the larger index has a smaller key, move the key forward until they match
+                while block1 is not None and k1 < k2:
+                    if i1 < len(block1.keys):
+                        # Get the next key in the block
+                        k1 = left_transformer(block1.keys[i1])
+                        i1 += 1
+                    else:
+                        # Get the next block
+                        block1 = block1.next_leaf
+                        i1 = 0
+            elif k1 > k2:
+                # If the smaller index has a smaller key, move the key forward until they match
+                while block2 is not None and k2 < k1:
+                    if i2 < len(block2.keys):
+                        # Get the next key in the block
+                        k2 = right_transformer(block2.keys[i2])
+                        i2 += 1
+                    else:
+                        # Get the next block
+                        block2 = block2.next_leaf
+                        i2 = 0
+
+            # If the keys are equal, yield the cartesian product of their values
+            if k1 == k2:
+                bentry1 = block1.values[k1].populate_record_list()
+                bentry2 = block2.values[k2].populate_record_list()
+                for v1 in bentry1:
+                    mem1 = larger_index.recordsTree[v1]
+                    for v2 in bentry2:
+                        mem2 = smaller_index.recordsTree[v2]
+                        yield (mem1, mem2)
+
+            # Stop if there are no more keys to consider
+            if block2 is None:
+                break
+
+            # Move the smaller index to the next key
+            if i2 < len(block2.keys):
+                # Get the next key in the block
+                k2 = right_transformer(block2.keys[i2])
+                i2 += 1
+            else:
+                # Get the next block
+                block2 = block2.next_leaf
+
+                # Get the next key
+                if block2 is None:
+                    break
+                k2 = right_transformer(block2.keys[0])
+                i2 = 1
 
     def __repr__(self):
         return str(self.bitstringTree)

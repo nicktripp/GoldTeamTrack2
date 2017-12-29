@@ -20,7 +20,7 @@ def test_print_table():
 
 if __name__ == "__main__":
 
-    print("\n***\n")
+    # print("\n***\n")
 
 
     res_table = [["", "1m rows"]]
