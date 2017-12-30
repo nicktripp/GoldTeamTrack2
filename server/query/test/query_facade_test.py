@@ -226,7 +226,7 @@ if __name__ == "__main__":
     out = Hangman.execute(query, BTreeIndex)
     assert set(out) == {'1,2,3,4,9,10,11,12'}
 
-    # TODO support column + column arithmatic?
+    # TODO support column + column arithmetic?
     # query = "SELECT S1.a FROM small S1 WHERE S1.a + S1.a = S1.a * 2"
     # out = Hangman.execute(query, BTreeIndex)
     # assert set(out) == {'1', '5', '9'}

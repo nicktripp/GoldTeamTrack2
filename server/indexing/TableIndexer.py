@@ -54,8 +54,12 @@ class TableIndexer:
             to_load = set([c.name for c in cols_to_load])
             start_pos = f.tell()
             for j, col in enumerate(column_names):
-                if os.path.exists(self.path_for_column(col)) or col not in to_load:
+                if col not in to_load:
                     continue
+                elif os.path.exists(self.path_for_column(col)):
+                    with open(self.path_for_column(col)) as f:
+                        self._column_indices[col] = pickle.load(f)
+                        continue
                 f.seek(start_pos)
                 index = self._index_class.make(self._value_location_generator(f, size, j), self._table, col)
                 self._column_indices[col] = index

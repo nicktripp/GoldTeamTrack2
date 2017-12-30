@@ -35,7 +35,7 @@ def query():
                 if i != len(ret) - 1:
                     ret_str += "\n"
 
-            print("\n\t|- %d records found in %f7.4 seconds" % (len(ret), (t1 - t0)))
+            print("\n\t|- %d records found in %f seconds" % (len(ret), (t1 - t0)))
             resp = app.make_response((ret_str, {'SQL-Error': False}))
 
         except SQLParsingError as e:
