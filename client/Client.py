@@ -37,7 +37,7 @@ class Client(cmd.Cmd):
             for record in records:
                 print(record)
 
-            print("\n\t|- %d records found in %f7.4 seconds" % (len(records), (t2 - t1)))
+            print("\n\t|- %d records found in %f seconds" % (len(records), (t2 - t1)))
 
         elif r.headers['SQL-Error'] == 'True':
             print(r.text)
